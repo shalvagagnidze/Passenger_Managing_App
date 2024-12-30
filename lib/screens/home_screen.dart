@@ -1293,7 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ElevatedButton(
                     onPressed: () => _showCustomDialog(context),
-                    child: const Text('Show Dialog'),
+                    child: const Text('კოპირება'),
                   ),
                 ],
               ),
