@@ -1,9 +1,10 @@
-import 'dart:convert';
-
+import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:passenger_managing_app/models/PassengerData';
+import 'package:passenger_managing_app/models/PageState.dart';
+import 'package:passenger_managing_app/models/PassengerData.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,34 +14,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late DateTime _selectedDate = DateTime.now();
-  late TimeOfDay _selectedTime = TimeOfDay.now(); // Store selected time
-  final TextEditingController _passengerController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  final FocusNode _freePassengersFocus = FocusNode();
+  // List to store page states
+  List<PageState> pages = [];
+  int currentPageIndex = 0;
+  String copiedData = "";
 
-  int _passengerCount = 0;
-  int _onlinePassengerCount = 0;
-  int _cashPassengerCount = 0;
-  int _cardPassengerCount = 0;
-  int _wizzPassengerCount = 0;
-
-  bool _showCashChildCounter = false;
-  bool _showCardChildCounter = false;
-  int _cashChildPassengerCount = 0;
-  int _cardChildPassengerCount = 0;
-
-  bool _showOnTheWay = false;
-  int _onTheWayCashCount = 0;
-  final TextEditingController _onTheWayController = TextEditingController();
-
-  bool _showFreePessangers = false;
-  int freePassengersCount = 0;
-  final TextEditingController _freePassengersController =
-      TextEditingController();
-  // Multi-select dropdown state
-  List<String> _selectedTransferOptions = [];
-  String _selectedSingleOption = '';
   final List<String> _transferOptions = [
     'ვენა',
     'ბარსელონა',
@@ -67,48 +45,121 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _passengerController.addListener(_updateOnlinePassengers);
+    // Initialize with one page
+    pages.add(PageState());
+    pages[0].passengerController.addListener(() => _updateOnlinePassengers(0));
+  }
+
+  void _addNewPage() {
+    setState(() {
+      pages.add(PageState());
+      currentPageIndex = pages.length - 1;
+      pages[currentPageIndex].passengerController.addListener(
+            () => _updateOnlinePassengers(currentPageIndex),
+          );
+    });
+  }
+
+  void _navigateToPage(int index) {
+    if (index >= 0 && index < pages.length) {
+      setState(() {
+        currentPageIndex = index;
+      });
+    }
   }
 
   void _updateCount(String type, bool increment) {
     setState(() {
+      PageState page = pages[currentPageIndex];
       switch (type) {
         case 'cash':
-          if (increment && _cashPassengerCount < 99) {
-            _cashPassengerCount++;
-          } else if (!increment && _cashPassengerCount > 0) {
-            _cashPassengerCount--;
+          if (increment && page.cashPassengerCount < 99) {
+            page.cashPassengerCount++;
+          } else if (!increment &&
+              page.cashPassengerCount > page.cashChildPassengerCount) {
+            page.cashPassengerCount--;
           }
           break;
         case 'card':
-          if (increment && _cardPassengerCount < 99) {
-            _cardPassengerCount++;
-          } else if (!increment && _cardPassengerCount > 0) {
-            _cardPassengerCount--;
+          if (increment && page.cardPassengerCount < 99) {
+            page.cardPassengerCount++;
+          } else if (!increment &&
+              page.cardPassengerCount > page.cardChildPassengerCount) {
+            page.cardPassengerCount--;
           }
           break;
         case 'wizz':
-          if (increment && _wizzPassengerCount < 99) {
-            _wizzPassengerCount++;
-          } else if (!increment && _wizzPassengerCount > 0) {
-            _wizzPassengerCount--;
+          if (increment && page.wizzPassengerCount < 99) {
+            page.wizzPassengerCount++;
+          } else if (!increment && page.wizzPassengerCount > 0) {
+            page.wizzPassengerCount--;
           }
           break;
       }
-      _updateOnlinePassengers();
+      _updateOnlinePassengers(currentPageIndex);
     });
   }
 
-  void _updateOnlinePassengers() {
+  void _updateOnlinePassengers(int pageIndex) {
     setState(() {
-      _passengerCount = int.tryParse(_passengerController.text) ?? 0;
-      _onlinePassengerCount = _passengerCount -
-          (_cashPassengerCount + _cardPassengerCount + _wizzPassengerCount);
-      if (_onlinePassengerCount < 0) _onlinePassengerCount = 0;
+      PageState page = pages[pageIndex];
+      page.passengerCount = int.tryParse(page.passengerController.text) ?? 0;
+      page.onlinePassengerCount = page.passengerCount -
+          (page.cashPassengerCount +
+              page.cardPassengerCount +
+              page.wizzPassengerCount);
+      if (page.onlinePassengerCount < 0) page.onlinePassengerCount = 0;
+    });
+  }
+
+  void _updateChildCount(String type, bool increment) {
+    setState(() {
+      PageState page = pages[currentPageIndex];
+      switch (type) {
+        case 'cash':
+          if (increment) {
+            if (page.cashChildPassengerCount < 99) {
+              page.cashChildPassengerCount++;
+              page.cashPassengerCount++;
+            }
+          } else {
+            if (page.cashChildPassengerCount > 0) {
+              page.cashChildPassengerCount--;
+              page.cashPassengerCount--;
+            }
+          }
+          break;
+        case 'card':
+          if (increment) {
+            if (page.cardChildPassengerCount < 99) {
+              page.cardChildPassengerCount++;
+              page.cardPassengerCount++;
+            }
+          } else {
+            if (page.cardChildPassengerCount > 0) {
+              page.cardChildPassengerCount--;
+              page.cardPassengerCount--;
+            }
+          }
+          break;
+      }
+      _updateOnlinePassengers(currentPageIndex);
+    });
+  }
+
+  void _updateOnTheWayCash(bool increment) {
+    setState(() {
+      PageState page = pages[currentPageIndex];
+      if (increment && page.onTheWayCashCount < 99) {
+        page.onTheWayCashCount++;
+      } else if (!increment && page.onTheWayCashCount > 0) {
+        page.onTheWayCashCount--;
+      }
     });
   }
 
   void _showCustomDialog(BuildContext context) {
+    PageState page = pages[currentPageIndex];
     if (!_validateData()) {
       return;
     }
@@ -117,89 +168,47 @@ class _HomeScreenState extends State<HomeScreen> {
     double childRate = 15.0;
 
     double totalCashAmount =
-        (_cashPassengerCount - _cashChildPassengerCount) * standartRate +
-            _cashChildPassengerCount * childRate;
+        (page.cashPassengerCount - page.cashChildPassengerCount) *
+                standartRate +
+            page.cashChildPassengerCount * childRate;
 
     double totalCardAmount =
-        (_cardPassengerCount - _cardChildPassengerCount) * standartRate +
-            _cardChildPassengerCount * childRate;
+        (page.cardPassengerCount - page.cardChildPassengerCount) *
+                standartRate +
+            page.cardChildPassengerCount * childRate;
 
     final data = PassengerData(
-      date: _selectedDate,
+      date: page.selectedDate,
       hours: DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
+        page.selectedDate.year,
+        page.selectedDate.month,
+        page.selectedDate.day,
+        page.selectedTime.hour,
+        page.selectedTime.minute,
       ),
-      route: _selectedTransferOptions,
-      bus: _selectedSingleOption,
-      totalPassengers: int.tryParse(_passengerController.text) ?? 0,
-      onlinePassengers: _onlinePassengerCount,
-      cashPassengers: _cashPassengerCount,
-      cashChild: _cashChildPassengerCount,
-      cardPassengers: _cardPassengerCount,
-      cardChild: _cardChildPassengerCount,
-      wizzAirPassengers: _wizzPassengerCount,
-      freePassengers: int.tryParse(_freePassengersController.text) ?? 0,
-      onTheWayPassengers: int.tryParse(_onTheWayController.text) ?? 0,
-      onTheWayCash: _onTheWayCashCount,
+      route: page.selectedTransferOptions,
+      bus: page.selectedSingleOption,
+      totalPassengers: int.tryParse(page.passengerController.text) ?? 0,
+      onlinePassengers: page.onlinePassengerCount,
+      cashPassengers: page.cashPassengerCount,
+      cashChild: page.cashChildPassengerCount,
+      cardPassengers: page.cardPassengerCount,
+      cardChild: page.cardChildPassengerCount,
+      wizzAirPassengers: page.wizzPassengerCount,
+      freePassengers: int.tryParse(page.freePassengersController.text) ?? 0,
+      onTheWayPassengers: int.tryParse(page.onTheWayController.text) ?? 0,
+      onTheWayCash: page.onTheWayCashCount,
       totalCashAmount: totalCashAmount,
       totalCardAmount: totalCardAmount,
     );
 
-    // showDialog(
-    //   context: context,
-    //   builder: (BuildContext context) {
-    //     // Parse the JSON string to get the filtered data
-    //     Map<String, dynamic> displayData = jsonDecode(data.toJson());
-    //     return AlertDialog(
-    //       title: const Text('Passenger Data'),
-    //       content: SingleChildScrollView(
-    //         child: Column(
-    //           crossAxisAlignment: CrossAxisAlignment.start,
-    //           mainAxisSize: MainAxisSize.min,
-    //           children: displayData.entries.map((entry) {
-    //             // Format amounts with 2 decimal places
-    //             var value = entry.value;
-    //             if (value is double) {
-    //               value = '${value.toStringAsFixed(2)} GEL';
-    //             }
-    //             return Text('${entry.key}: $value');
-    //           }).toList(),
-    //         ),
-    //       ),
-    //       actions: <Widget>[
-    //         TextButton(
-    //           onPressed: () {
-    //             Navigator.of(context).pop();
-    //             FocusScope.of(context).unfocus();
-    //           },
-    //           child: const Text('Close'),
-    //         ),
-    //         TextButton(
-    //           onPressed: () {
-    //             Clipboard.setData(ClipboardData(text: data.toJson()));
-    //             ScaffoldMessenger.of(context).showSnackBar(
-    //               const SnackBar(content: Text('Data copied to clipboard')),
-    //             );
-    //             Navigator.of(context).pop();
-    //             FocusScope.of(context).unfocus();
-    //           },
-    //           child: const Text('Copy to Clipboard'),
-    //         ),
-    //       ],
-    //     );
-    //   },
-    // );
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
         String formattedData = data.toFormattedString();
         return AlertDialog(
-          title: const Text('რაოდენობები'),
+          title: const Text('რეპორტი'),
           content: SingleChildScrollView(
             child: Text(formattedData),
           ),
@@ -228,54 +237,97 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _updateChildCount(String type, bool increment) {
-    setState(() {
-      switch (type) {
-        case 'cash':
-          if (increment) {
-            if (_cashChildPassengerCount < 99) {
-              _cashChildPassengerCount++;
-              _cashPassengerCount++; // Increase parent counter
-            }
-          } else {
-            if (_cashChildPassengerCount > 0) {
-              _cashChildPassengerCount--;
-              _cashPassengerCount--; // Decrease parent counter
-            }
-          }
-          break;
-        case 'card':
-          if (increment) {
-            if (_cardChildPassengerCount < 99) {
-              _cardChildPassengerCount++;
-              _cardPassengerCount++; // Increase parent counter
-            }
-          } else {
-            if (_cardChildPassengerCount > 0) {
-              _cardChildPassengerCount--;
-              _cardPassengerCount--; // Decrease parent counter
-            }
-          }
-          break;
-      }
-      _updateOnlinePassengers();
-    });
-  }
+//   void telegram(BuildContext context) {
+//   GestureDetector(
+//     child: Text('Send message'),
+//     onTap: () async {
+//       try {
+//         await openTelegram(
+//           phone: '+995 (598) 111-770',
+//           text: 'Initial text',
+//         );
+//       } on Exception catch (e) {
+//         showDialog(
+//           context: context,
+//           builder: (context) => CupertinoAlertDialog(
+//             title: const Text("Attention"),
+//             content: Padding(
+//               padding: const EdgeInsets.only(top: 5),
+//               child: Text(
+//                 'We did not find the «Telegram» application on your phone, please install it and try again',
+//                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
+//                       height: 1.1,
+//                       color: Theme.of(context).textTheme.bodyLarge?.color,
+//                     ),
+//               ),
+//             ),
+//             actions: [
+//               CupertinoDialogAction(
+//                 child: const Text('Close'),
+//                 onPressed: () => Navigator.of(context).pop(),
+//               ),
+//             ],
+//           ),
+//         );
+//       }
+//     },
+//   );
+// }
 
-  void _updateOnTheWayCash(bool increment) {
-    setState(() {
-      if (increment && _onTheWayCashCount < 99) {
-        _onTheWayCashCount++;
-      } else if (!increment && _onTheWayCashCount > 0) {
-        _onTheWayCashCount--;
-      }
-    });
+
+  void _showAllPagesDialog(BuildContext context) {
+    if (pages.isEmpty) return;
+
+    // Collect formatted data from all pages
+    final String allPagesData = pages
+        .asMap()
+        .entries
+        .map((entry) => entry.value.toPassengerData().toFormattedString())
+        .join('\n\n');
+
+    // Show dialog with all pages data
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('რეპორტი'),
+          content: SingleChildScrollView(
+            child: Text(allPagesData),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                FocusScope.of(context).unfocus();
+              },
+              child: const Text('დახურვა'),
+            ),
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: allPagesData));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('მონაცემები დაკოპირდა')),
+                );
+                Navigator.of(context).pop();
+                FocusScope.of(context).unfocus();
+              },
+              child: const Text('კოპირება'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showConfirmDropdown(BuildContext context) {
-    _tempSelectedTransferOptions = List.from(_selectedTransferOptions);
-    FocusScope.of(context).unfocus();
-    // Convert to Set and back to List to remove duplicates
+    PageState page = pages[currentPageIndex];
+    _tempSelectedTransferOptions = List.from(page.selectedTransferOptions);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).unfocus();
+    });
+
     final List<String> uniqueOptions = _transferOptions.toSet().toList();
 
     showDialog(
@@ -286,7 +338,7 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (BuildContext context, StateSetter setDialogState) {
             return AlertDialog(
               title: const Text('Select Options'),
-              content: Container(
+              content: SizedBox(
                 height: uniqueOptions.length > 10 ? 300 : null,
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -324,18 +376,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    FocusScope.of(context).unfocus();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      FocusScope.of(context).unfocus();
+                    });
                   },
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
-                      _selectedTransferOptions =
+                      page.selectedTransferOptions =
                           List.from(_tempSelectedTransferOptions);
                     });
                     Navigator.of(context).pop();
-                    FocusScope.of(context).unfocus();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      FocusScope.of(context).unfocus();
+                    });
                   },
                   child: const Text('Confirm'),
                 ),
@@ -354,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           contentPadding: EdgeInsets.zero,
-          content: Container(
+          content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: Column(
@@ -363,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return InkWell(
                     onTap: () {
                       setState(() {
-                        _selectedSingleOption = value;
+                        pages[currentPageIndex].selectedSingleOption = value;
                       });
                       Navigator.of(context).pop();
                       FocusScope.of(context).unfocus();
@@ -390,41 +446,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool _validateData() {
+    PageState page = pages[currentPageIndex];
     String errorMessage = '';
 
-    // Check total passengers
-    if (_passengerController.text.isEmpty ||
-        int.parse(_passengerController.text) == 0) {
+    if (page.passengerController.text.isEmpty ||
+        int.parse(page.passengerController.text) == 0) {
       errorMessage += 'მგზავრების რაოდენობა სავალდებულოა\n';
     }
 
-    // Check route selection
-    if (_selectedTransferOptions.isEmpty) {
+    if (page.selectedTransferOptions.isEmpty) {
       errorMessage += 'გთხოვთ აირჩიოთ რეისი\n';
     }
 
-    // Check bus selection
-    if (_selectedSingleOption.isEmpty) {
+    if (page.selectedSingleOption.isEmpty) {
       errorMessage += 'გთხოვთ აირჩიოთ ავტობუსი\n';
     }
 
-    // Check free passengers if checked
-    if (_showFreePessangers) {
-      if (_freePassengersController.text.isEmpty ||
-          int.parse(_freePassengersController.text) == 0) {
+    if (page.showFreePessangers) {
+      if (page.freePassengersController.text.isEmpty ||
+          int.parse(page.freePassengersController.text) == 0) {
         errorMessage += 'უფასო მგზავრების რაოდენობა არ შეიძლება იყოს 0\n';
       }
     }
 
-    // Check on the way passengers if checked
-    if (_showOnTheWay) {
-      if (_onTheWayController.text.isEmpty ||
-          int.parse(_onTheWayController.text) == 0) {
+    if (page.showOnTheWay) {
+      if (page.onTheWayController.text.isEmpty ||
+          int.parse(page.onTheWayController.text) == 0) {
         errorMessage += 'გზაში მყოფი მგზავრების რაოდენობა არ შეიძლება იყოს 0\n';
       }
     }
 
-    // If there are any errors, show them in a dialog
     if (errorMessage.isNotEmpty) {
       showDialog(
         context: context,
@@ -447,8 +498,58 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
+  void _removePage(BuildContext context) {
+    if (pages.length > 1) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: const Text("გვერდის წაშლა"),
+            content: const Text("დარწმუნებული ხარ რომ გსურს წაშლა?"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    FocusScope.of(context).unfocus();
+                  });
+                },
+                child: const Text("გაუქმება"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    pages.removeAt(currentPageIndex);
+
+                    // Adjust the current page index to remain valid
+                    if (currentPageIndex >= pages.length) {
+                      currentPageIndex = pages.length - 1;
+                    }
+                  });
+
+                  Navigator.of(dialogContext).pop();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    FocusScope.of(context).unfocus();
+                  });
+                },
+                child: const Text("წაშლა"),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ბოლო გვერდს ვერ წაშლი!")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    PageState currentPage = pages[currentPageIndex];
+
     return GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
@@ -463,6 +564,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Column(
                 children: [
+                  // Navigation Bar
+                  SizedBox(
+                    height: 60,
+                    child: Row(
+                      children: [
+                        // Left Edge: First Two Items
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              iconSize: 30,
+                              color: Colors.red,
+                              icon: const Icon(Icons.delete_rounded),
+                              onPressed: () => _removePage(context),
+                            ),
+                            Text(
+                              '${currentPageIndex + 1}/${pages.length}',
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ],
+                        ),
+                        const Spacer(), // Push items apart
+                        // Right Edge: Last Two Items
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              color: Colors.purple,
+                              icon: const Icon(Icons.copy),
+                              onPressed: () => _showAllPagesDialog(context),
+                            ),
+                            IconButton(
+                              iconSize: 30,
+                              color: Colors.green,
+                              icon: const Icon(Icons.post_add_rounded),
+                              onPressed: _addNewPage,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // First Row for Date and Time Picker
                   SizedBox(
                     height: 60,
@@ -480,7 +624,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 lastDate: DateTime(2101),
                               );
                               if (pickedDate != null) {
-                                setState(() => _selectedDate = pickedDate);
+                                setState(() =>
+                                    currentPage.selectedDate = pickedDate);
                               }
                             },
                             child: Container(
@@ -498,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Flexible(
                                     child: Text(
                                       DateFormat('MM/dd/yyyy')
-                                          .format(_selectedDate),
+                                          .format(currentPage.selectedDate),
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold,
@@ -520,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () async {
                               final pickedTime = await showTimePicker(
                                 context: context,
-                                initialTime: _selectedTime,
+                                initialTime: currentPage.selectedTime,
                                 builder: (BuildContext context, Widget? child) {
                                   return MediaQuery(
                                     data: MediaQuery.of(context)
@@ -552,7 +697,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                               if (pickedTime != null) {
                                 setState(() {
-                                  _selectedTime =
+                                  currentPage.selectedTime =
                                       pickedTime; // Save the selected time
                                 });
                               }
@@ -569,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
-                                      '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}', // Display selected time in 24-hour format
+                                      '${currentPage.selectedTime.hour.toString().padLeft(2, '0')}:${currentPage.selectedTime.minute.toString().padLeft(2, '0')}', // Display selected time in 24-hour format
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: Colors.blue,
@@ -610,9 +755,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      _selectedTransferOptions.isEmpty
+                                      currentPage
+                                              .selectedTransferOptions.isEmpty
                                           ? 'რეისი'
-                                          : _selectedTransferOptions.join(', '),
+                                          : currentPage.selectedTransferOptions
+                                              .join(', '),
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 15,
@@ -649,9 +796,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      _selectedSingleOption.isEmpty
+                                      currentPage.selectedSingleOption.isEmpty
                                           ? 'ავტობუსი'
-                                          : _selectedSingleOption,
+                                          : currentPage.selectedSingleOption,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 20,
@@ -704,8 +851,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     SizedBox(
                                       width: 90,
                                       child: TextField(
-                                        controller: _passengerController,
-                                        focusNode: _focusNode,
+                                        controller:
+                                            currentPage.passengerController,
+                                        focusNode: currentPage.focusNode,
                                         keyboardType: TextInputType.number,
                                         inputFormatters: [
                                           FilteringTextInputFormatter
@@ -718,10 +866,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         onChanged: (value) {
                                           setState(() {
-                                            _passengerCount =
+                                            currentPage.passengerCount =
                                                 int.tryParse(value) ??
-                                                    _passengerCount;
-                                            _updateOnlinePassengers();
+                                                    currentPage.passengerCount;
+                                            _updateOnlinePassengers(
+                                                currentPageIndex);
                                           });
                                         },
                                       ),
@@ -757,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         Text(
-                          '$_onlinePassengerCount',
+                          '${currentPage.onlinePassengerCount}',
                           style: const TextStyle(fontSize: 25),
                         ),
                       ],
@@ -794,22 +943,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                       icon: const Icon(
                                           Icons.remove_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _cashPassengerCount >
-                                              _cashChildPassengerCount
-                                          ? () => _updateCount('cash', false)
-                                          : null,
+                                      onPressed:
+                                          currentPage.cashPassengerCount > 0
+                                              ? () =>
+                                                  _updateCount('cash', false)
+                                              : null,
                                     ),
                                     Text(
-                                      '$_cashPassengerCount',
+                                      '${currentPage.cashPassengerCount}',
                                       style: const TextStyle(fontSize: 25),
                                     ),
                                     IconButton(
                                       icon:
                                           const Icon(Icons.add_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _cashPassengerCount < 99
-                                          ? () => _updateCount('cash', true)
-                                          : null,
+                                      onPressed:
+                                          currentPage.cashPassengerCount < 99
+                                              ? () => _updateCount('cash', true)
+                                              : null,
                                     ),
                                   ],
                                 ),
@@ -840,17 +991,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Colors.blue, // Customize the color
                                     ),
                                     Checkbox(
-                                      value: _showCashChildCounter,
+                                      value: currentPage.showCashChildCounter,
                                       onChanged: (bool? value) {
                                         setState(() {
-                                          _showCashChildCounter =
+                                          currentPage.showCashChildCounter =
                                               value ?? false;
-                                          if (!_showCashChildCounter) {
+                                          if (!currentPage
+                                              .showCashChildCounter) {
                                             // Decrease parent counter by child count
-                                            _cashPassengerCount -=
-                                                _cashChildPassengerCount;
-                                            _cashChildPassengerCount = 0;
-                                            _updateOnlinePassengers();
+                                            currentPage.cashPassengerCount -=
+                                                currentPage
+                                                    .cashChildPassengerCount;
+                                            currentPage
+                                                .cashChildPassengerCount = 0;
+                                            _updateOnlinePassengers(
+                                                currentPageIndex);
                                           }
                                         });
                                       },
@@ -861,20 +1016,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ],
                                 ),
-                                if (_showCashChildCounter)
+                                if (currentPage.showCashChildCounter)
                                   Row(
                                     children: [
                                       IconButton(
                                         icon: const Icon(
                                             Icons.remove_circle_outline),
                                         iconSize: 25,
-                                        onPressed: _cashChildPassengerCount > 0
+                                        onPressed: currentPage
+                                                    .cashChildPassengerCount >
+                                                0
                                             ? () =>
                                                 _updateChildCount('cash', false)
                                             : null,
                                       ),
                                       Text(
-                                        '$_cashChildPassengerCount',
+                                        '${currentPage.cashChildPassengerCount}',
                                         style: const TextStyle(
                                             fontSize: 20, color: Colors.red),
                                       ),
@@ -882,7 +1039,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: const Icon(
                                             Icons.add_circle_outline),
                                         iconSize: 25,
-                                        onPressed: _cashChildPassengerCount < 99
+                                        onPressed: currentPage
+                                                    .cashChildPassengerCount <
+                                                99
                                             ? () =>
                                                 _updateChildCount('cash', true)
                                             : null,
@@ -927,22 +1086,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                       icon: const Icon(
                                           Icons.remove_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _cardPassengerCount >
-                                              _cardChildPassengerCount
+                                      onPressed: currentPage
+                                                  .cardPassengerCount >
+                                              currentPage
+                                                  .cardChildPassengerCount
                                           ? () => _updateCount('card', false)
                                           : null,
                                     ),
                                     Text(
-                                      '$_cardPassengerCount',
+                                      '${currentPage.cardPassengerCount}',
                                       style: const TextStyle(fontSize: 25),
                                     ),
                                     IconButton(
                                       icon:
                                           const Icon(Icons.add_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _cardPassengerCount < 99
-                                          ? () => _updateCount('card', true)
-                                          : null,
+                                      onPressed:
+                                          currentPage.cardPassengerCount < 99
+                                              ? () => _updateCount('card', true)
+                                              : null,
                                     ),
                                   ],
                                 ),
@@ -973,17 +1135,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Colors.blue, // Customize the color
                                     ),
                                     Checkbox(
-                                      value: _showCardChildCounter,
+                                      value: currentPage.showCardChildCounter,
                                       onChanged: (bool? value) {
                                         setState(() {
-                                          _showCardChildCounter =
+                                          currentPage.showCardChildCounter =
                                               value ?? false;
-                                          if (!_showCardChildCounter) {
+                                          if (!currentPage
+                                              .showCardChildCounter) {
                                             // Decrease parent counter by child count
-                                            _cardPassengerCount -=
-                                                _cardChildPassengerCount;
-                                            _cardChildPassengerCount = 0;
-                                            _updateOnlinePassengers();
+                                            currentPage.cardPassengerCount -=
+                                                currentPage
+                                                    .cardChildPassengerCount;
+                                            currentPage
+                                                .cardChildPassengerCount = 0;
+                                            _updateOnlinePassengers(
+                                                currentPageIndex);
                                           }
                                         });
                                       },
@@ -994,20 +1160,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ],
                                 ),
-                                if (_showCardChildCounter)
+                                if (currentPage.showCardChildCounter)
                                   Row(
                                     children: [
                                       IconButton(
                                         icon: const Icon(
                                             Icons.remove_circle_outline),
                                         iconSize: 25,
-                                        onPressed: _cardChildPassengerCount > 0
+                                        onPressed: currentPage
+                                                    .cardChildPassengerCount >
+                                                0
                                             ? () =>
                                                 _updateChildCount('card', false)
                                             : null,
                                       ),
                                       Text(
-                                        '$_cardChildPassengerCount',
+                                        '${currentPage.cardChildPassengerCount}',
                                         style: const TextStyle(
                                             fontSize: 20, color: Colors.red),
                                       ),
@@ -1015,7 +1183,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: const Icon(
                                             Icons.add_circle_outline),
                                         iconSize: 25,
-                                        onPressed: _cardChildPassengerCount < 99
+                                        onPressed: currentPage
+                                                    .cardChildPassengerCount <
+                                                99
                                             ? () =>
                                                 _updateChildCount('card', true)
                                             : null,
@@ -1060,21 +1230,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                       icon: const Icon(
                                           Icons.remove_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _wizzPassengerCount > 0
-                                          ? () => _updateCount('wizz', false)
-                                          : null,
+                                      onPressed:
+                                          currentPage.wizzPassengerCount > 0
+                                              ? () =>
+                                                  _updateCount('wizz', false)
+                                              : null,
                                     ),
                                     Text(
-                                      '$_wizzPassengerCount',
+                                      '${currentPage.wizzPassengerCount}',
                                       style: const TextStyle(fontSize: 25),
                                     ),
                                     IconButton(
                                       icon:
                                           const Icon(Icons.add_circle_outline),
                                       iconSize: 30,
-                                      onPressed: _wizzPassengerCount < 99
-                                          ? () => _updateCount('wizz', true)
-                                          : null,
+                                      onPressed:
+                                          currentPage.wizzPassengerCount < 99
+                                              ? () => _updateCount('wizz', true)
+                                              : null,
                                     ),
                                   ],
                                 ),
@@ -1108,13 +1281,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: const Color.fromARGB(255, 0, 116, 60),
                                 ),
                                 Checkbox(
-                                  value: _showFreePessangers,
+                                  value: currentPage.showFreePessangers,
                                   onChanged: (bool? value) {
                                     setState(() {
-                                      _showFreePessangers = value ?? false;
-                                      if (!_showFreePessangers) {
-                                        freePassengersCount = 0;
-                                        _freePassengersController.clear();
+                                      currentPage.showFreePessangers =
+                                          value ?? false;
+                                      if (!currentPage.showFreePessangers) {
+                                        currentPage.freePassengersCount = 0;
+                                        currentPage.freePassengersController
+                                            .clear();
                                       }
                                     });
                                   },
@@ -1126,7 +1301,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(width: 39),
                                 Spacer(),
                                 // TextField (only shown when checkbox is checked)
-                                if (_showFreePessangers)
+                                if (currentPage.showFreePessangers)
                                   Expanded(
                                     child: Row(
                                       children: [
@@ -1136,8 +1311,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           width: 90,
                                           height: 30,
                                           child: TextField(
-                                            controller:
-                                                _freePassengersController,
+                                            controller: currentPage
+                                                .freePassengersController,
                                             decoration: const InputDecoration(
                                               contentPadding:
                                                   EdgeInsets.symmetric(
@@ -1146,7 +1321,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                               border: OutlineInputBorder(),
                                             ),
                                             keyboardType: TextInputType.number,
-                                            focusNode: _freePassengersFocus,
+                                            focusNode:
+                                                currentPage.freePassengersFocus,
                                             inputFormatters: [
                                               FilteringTextInputFormatter
                                                   .digitsOnly
@@ -1180,13 +1356,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.blue,
                                 ),
                                 Checkbox(
-                                  value: _showOnTheWay,
+                                  value: currentPage.showOnTheWay,
                                   onChanged: (bool? value) {
                                     setState(() {
-                                      _showOnTheWay = value ?? false;
-                                      if (!_showOnTheWay) {
-                                        _onTheWayCashCount = 0;
-                                        _onTheWayController.clear();
+                                      currentPage.showOnTheWay = value ?? false;
+                                      if (!currentPage.showOnTheWay) {
+                                        currentPage.onTheWayCashCount = 0;
+                                        currentPage.onTheWayController.clear();
                                       }
                                     });
                                   },
@@ -1198,7 +1374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(width: 37),
                                 Spacer(),
                                 // TextField (only shown when checkbox is checked)
-                                if (_showOnTheWay)
+                                if (currentPage.showOnTheWay)
                                   Expanded(
                                     child: Row(
                                       children: [
@@ -1207,7 +1383,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           width: 90,
                                           height: 30,
                                           child: TextField(
-                                            controller: _onTheWayController,
+                                            controller:
+                                                currentPage.onTheWayController,
                                             keyboardType: TextInputType.number,
                                             inputFormatters: [
                                               FilteringTextInputFormatter
@@ -1232,7 +1409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  if (_showOnTheWay)
+                  if (currentPage.showOnTheWay)
                     SizedBox(
                       height: 40,
                       child: Row(
@@ -1266,21 +1443,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                         icon: const Icon(
                                             Icons.remove_circle_outline),
                                         iconSize: 28,
-                                        onPressed: _onTheWayCashCount > 0
-                                            ? () => _updateOnTheWayCash(false)
-                                            : null,
+                                        onPressed:
+                                            currentPage.onTheWayCashCount > 0
+                                                ? () =>
+                                                    _updateOnTheWayCash(false)
+                                                : null,
                                       ),
                                       Text(
-                                        '$_onTheWayCashCount',
+                                        '${currentPage.onTheWayCashCount}',
                                         style: const TextStyle(fontSize: 22),
                                       ),
                                       IconButton(
                                         icon: const Icon(
                                             Icons.add_circle_outline),
                                         iconSize: 28,
-                                        onPressed: _onTheWayCashCount < 99
-                                            ? () => _updateOnTheWayCash(true)
-                                            : null,
+                                        onPressed:
+                                            currentPage.onTheWayCashCount < 99
+                                                ? () =>
+                                                    _updateOnTheWayCash(true)
+                                                : null,
                                       ),
                                     ],
                                   ),
@@ -1291,25 +1472,40 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                  ElevatedButton(
-                    onPressed: () => _showCustomDialog(context),
-                    child: const Text('კოპირება'),
+                  Container(
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Left Arrow
+                        IconButton(
+                          iconSize: 40,
+                          color: Colors.green,
+                          icon: const Icon(Icons.arrow_back_ios),
+                          onPressed: currentPageIndex > 0
+                              ? () => _navigateToPage(currentPageIndex - 1)
+                              : null,
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _showCustomDialog(context),
+                          child: const Text('კოპირება'),
+                        ),
+                        IconButton(
+                          iconSize: 40,
+                          color: Colors.green,
+                          icon: const Icon(Icons.arrow_forward_ios),
+                          onPressed: currentPageIndex < pages.length - 1
+                              ? () => _navigateToPage(currentPageIndex + 1)
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ));
-  }
-
-  @override
-  void dispose() {
-    _passengerController.removeListener(_updateOnlinePassengers);
-    _passengerController.dispose();
-    _onTheWayController.dispose();
-    _freePassengersController.dispose();
-    _focusNode.dispose();
-    _freePassengersFocus.dispose();
-    super.dispose();
   }
 }

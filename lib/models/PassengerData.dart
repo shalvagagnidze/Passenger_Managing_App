@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:intl/intl.dart';
 
 class PassengerData {
@@ -92,11 +91,11 @@ class PassengerData {
     final StringBuffer buffer = StringBuffer();
     
     // Format date and time together
-    buffer.writeln('${DateFormat('dd-MM-yyyy HH:mm').format(hours)}');
+    buffer.writeln(DateFormat('dd-MM-yyyy HH:mm').format(hours));
     
-    buffer.writeln('${route.join(',')}');
+    buffer.writeln(route.join(','));
 
-    buffer.writeln('$bus');
+    buffer.writeln(bus);
     // Add passenger information line by line
     if (totalPassengers > 0) {
       buffer.writeln('მგზავრები: $totalPassengers');
@@ -120,8 +119,8 @@ class PassengerData {
     }
     if (onTheWayPassengers > 0) {
       final onTheWayText = onTheWayCash > 0 
-          ? '+$onTheWayPassengers გზაში ($onTheWayCash ქეში)'
-          : '+გზაში: $onTheWayPassengers(ონლაინი)';
+          ? '+$onTheWayPassengers გზაში, ($onTheWayCash ქეში)'
+          : '+$onTheWayPassengers გზაში, ონლაინი';
       buffer.writeln(onTheWayText);
     }
     // if (totalCashAmount > 0) {
