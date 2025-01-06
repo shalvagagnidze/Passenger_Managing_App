@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:passenger_managing_app/models/PageState.dart';
-import 'package:passenger_managing_app/models/PassengerData.dart';
+import 'package:passenger_managing_app/models/page_state.dart';
+import 'package:passenger_managing_app/models/passenger_data.dart';
 import 'package:passenger_managing_app/widgets/app_drawer.dart';
 
 class HomeScreen extends StatefulWidget {

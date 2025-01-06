@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:passenger_managing_app/models/PassengerData.dart';
+import 'package:passenger_managing_app/models/passenger_data.dart';
 
 class PageState {
   DateTime selectedDate = DateTime.now();
