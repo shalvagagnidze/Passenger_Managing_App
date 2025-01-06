@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:passenger_managing_app/screens/drivers_screen.dart';
 import 'package:passenger_managing_app/screens/home_screen.dart';
 
-void main(){
+void main() {
   runApp(const MyApp());
 }
 
@@ -14,7 +15,11 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(), 
+      home: const HomeScreen(),
+      routes: {
+        //'/': (context) => const HomeScreen(),
+        '/drivers': (context) => const DriversScreen(), // Create this screen
+      },
     );
   }
 }

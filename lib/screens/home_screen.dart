@@ -1,10 +1,9 @@
-import 'dart:ui';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:passenger_managing_app/models/PageState.dart';
 import 'package:passenger_managing_app/models/PassengerData.dart';
+import 'package:passenger_managing_app/widgets/app_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -273,7 +272,6 @@ class _HomeScreenState extends State<HomeScreen> {
 //     },
 //   );
 // }
-
 
   void _showAllPagesDialog(BuildContext context) {
     if (pages.isEmpty) return;
@@ -550,11 +548,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     PageState currentPage = pages[currentPageIndex];
 
-    return GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: Scaffold(
+    return Scaffold(
+          drawer: AppDrawer(),           
           body: SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.only(
@@ -850,7 +845,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     SizedBox(
                                       width: 90,
-                                      child: TextField(
+                                      child: TextFormField(
                                         controller:
                                             currentPage.passengerController,
                                         focusNode: currentPage.focusNode,
@@ -1506,6 +1501,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-        ));
+        );
   }
 }
