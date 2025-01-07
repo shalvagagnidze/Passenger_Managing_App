@@ -15,10 +15,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const DriversScreen(),
+      home: const HomeScreen(),
       routes: {
         //'/': (context) => const HomeScreen(),
-        '/drivers': (context) => const HomeScreen(), // Create this screen
+        '/drivers': (context) => const DriversScreen(),
       },
     );
   }
