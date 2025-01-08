@@ -4,7 +4,7 @@ import 'dart:convert';
 
 
 class DriverService {
-  static const String baseUrl = 'http://localhost:5004';
+  static const String baseUrl = 'http://janiapp.azurewebsites.net';
 
   Future<List<Driver>> getAllDrivers() async {
     try {
@@ -20,4 +20,22 @@ class DriverService {
       throw Exception('Failed to load drivers: $e');
     }
   }
+
+  Future<void> addDriver(Driver driver) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl/Driver/add-drivers'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'fistname': driver.fullName,
+      'lastname': driver.lastName,
+      'busId': driver.busNumber,
+      'phoneNumber': driver.phoneNumber,
+    }),
+  );
+
+  if (response.statusCode != 201) {
+    throw Exception('Failed to add driver');
+  }
+}
+
 }

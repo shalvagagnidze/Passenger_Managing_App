@@ -1,16 +1,16 @@
 class Driver {
-  final int id;
+  final int? id;
   final String firstName;
   final String lastName;
   final String phoneNumber;
-  final int busId;
+  final String busNumber;
 
   Driver({
-    required this.id,
+    this.id,
     required this.firstName,
     required this.lastName,
     required this.phoneNumber,
-    required this.busId,
+    required this.busNumber,
   });
 
   factory Driver.fromJson(Map<String, dynamic> json) {
@@ -19,7 +19,7 @@ class Driver {
       firstName: json['firstName'],
       lastName: json['lastName'],
       phoneNumber: json['phoneNumber'],
-      busId: json['busId'],
+      busNumber: json['bus']['number'],
     );
   }
 

@@ -29,6 +29,7 @@ class PageState {
 
   List<String> selectedTransferOptions = [];
   String selectedSingleOption = '';
+  String selectedDriverName = '';
 
   void dispose() {
     passengerController.dispose();
@@ -58,7 +59,7 @@ class PageState {
         selectedTime.minute,
       ),
       route: selectedTransferOptions,
-      bus: selectedSingleOption,
+      bus: '$selectedDriverName $selectedSingleOption',
       totalPassengers: passengerCount,
       onlinePassengers: onlinePassengerCount,
       cashPassengers: cashPassengerCount,
