@@ -49,5 +49,9 @@
 	<array>
 		<string>tel</string>
 	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+    	<string>fb-messenger</string>
+	</array>
 </dict>
 </plist>

@@ -27,12 +27,6 @@ class _DriversScreenState extends State<DriversScreen> {
     super.initState();
     _driverService = DriverService(_busService);
     _loadDrivers();
-    // Sort the drivers by the numeric part of busNumber
-    // drivers.sort((a, b) {
-    //   final aNumber = int.tryParse(_extractNumber(a.busNumber)) ?? 0;
-    //   final bNumber = int.tryParse(_extractNumber(b.busNumber)) ?? 0;
-    //   return aNumber.compareTo(bNumber);
-    // });
   }
 
   Future<void> _loadDrivers() async {
@@ -63,110 +57,9 @@ class _DriversScreenState extends State<DriversScreen> {
     }
   }
 
-  // String _extractNumber(String busNumber) {
-  //   final match = RegExp(r'\d+').firstMatch(busNumber);
-  //   return match?.group(0) ?? '0'; // Return '0' if no match is found
-  // }
-
-  // void _showAddDriverDialog() {
-  //   final TextEditingController firstNameController = TextEditingController();
-  //   final TextEditingController lastNameController = TextEditingController();
-  //   String? selectedBus;
-
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: true,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: const Text('Add New Driver'),
-  //         content: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             // First Name Input
-  //             TextField(
-  //               controller: firstNameController,
-  //               decoration: const InputDecoration(labelText: 'First Name'),
-  //             ),
-  //             const SizedBox(height: 8),
-  //             // Last Name Input
-  //             TextField(
-  //               controller: lastNameController,
-  //               decoration: const InputDecoration(labelText: 'Last Name'),
-  //             ),
-  //             const SizedBox(height: 8),
-  //             TextField(
-  //               controller: lastNameController,
-  //               decoration: const InputDecoration(labelText: 'Phone Number'),
-  //             ),
-  //             const SizedBox(height: 8),
-  //             // Dropdown for Bus Selection
-  //             DropdownButtonFormField<String>(
-  //               value: selectedBus,
-  //               items: drivers
-  //                   .map((driver) => driver.busNumber)
-  //                   .toSet() // Remove duplicates
-  //                   .map((bus) => DropdownMenuItem(
-  //                         value: bus,
-  //                         child: Text(bus),
-  //                       ))
-  //                   .toList(),
-  //               onChanged: (value) => setState(() {
-  //                 selectedBus = value!;
-  //               }),
-  //               decoration: const InputDecoration(labelText: 'Select Bus'),
-  //             ),
-  //           ],
-  //         ),
-  //         actions: [
-  //           // Cancel Button
-  //           TextButton(
-  //             onPressed: () => Navigator.of(context).pop(),
-  //             child: const Text('Cancel'),
-  //           ),
-  //           // Submit Button
-  //           ElevatedButton(
-  //             onPressed: () async {
-  //               final firstName = firstNameController.text.trim();
-  //               final lastName = lastNameController.text.trim();
-
-  //               if (firstName.isEmpty ||
-  //                   lastName.isEmpty ||
-  //                   selectedBus == null) {
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   const SnackBar(content: Text('Please fill all fields')),
-  //                 );
-  //                 return;
-  //               }
-
-  //               Navigator.of(context).pop();
-
-  //               // Make POST request to add new driver
-  //               await _addDriver(firstName, lastName, selectedBus!);
-  //             },
-  //             child: const Text('Submit'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-//final BusService _busService = BusService();
   List<String> _buses = [];
 
-  // Future<void> _loadBuses() async {
-  //   try {
-  //     final buses = await _busService.getAllBuses();
-  //     setState(() {
-  //       _buses = buses;
-  //     });
-  //   } catch (e) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Error loading buses: $e')),
-  //       );
-  //     }
-  //   }
-  // }
+
 
   void _showAddEntityDialog() {
     showDialog(
@@ -186,49 +79,12 @@ class _DriversScreenState extends State<DriversScreen> {
     );
   }
 
-  // Future<void> _addDriver(
-  //     String firstName, String lastName, String busNumber) async {
-  //   setState(() => isLoading = true);
-
-  //   try {
-  //     final newDriver = Driver(
-  //       firstName: firstName,
-  //       lastName: lastName,
-  //       busNumber: busNumber,
-  //       phoneNumber: '', // Default or placeholder phone number
-  //     );
-
-  //     // Call your service to make a POST request
-  //     await _driverService.addDriver(newDriver);
-
-  //     setState(() {
-  //       drivers.add(newDriver);
-  //       isLoading = false;
-  //     });
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Driver added successfully!')),
-  //     );
-  //   } catch (e) {
-  //     setState(() => isLoading = false);
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error adding driver: $e')),
-  //     );
-  //   }
-  // }
-
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri launchUri = Uri(
       scheme: 'tel',
       path: phoneNumber.replaceAll(' ', ''),
     );
     await launchUrl(launchUri);
-    // if (await canLaunchUrl(launchUri)) {
-    //   await launchUrl(launchUri);
-    // } else {
-    //   throw 'Could not launch $launchUri';
-    // }
   }
 
   @override

@@ -26,12 +26,12 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
   final _formKey = GlobalKey<FormState>();
   bool isAddingDriver = true;
   bool _isLoading = false;
-  
+
   // Controllers for driver fields
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
-  
+
   // Controller for bus number
   final _busNumberController = TextEditingController();
   String? _selectedBus;
@@ -96,9 +96,9 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isAddingDriver ? 'მძღოლი წარმატებით დაემატა' : 'ავტობუსი წარმატებით დაემატა'
-            ),
+            content: Text(isAddingDriver
+                ? 'მძღოლი წარმატებით დაემატა'
+                : 'ავტობუსი წარმატებით დაემატა'),
           ),
         );
       }
@@ -131,35 +131,34 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      isAddingDriver ? 'მძღოლის დამატება' : 'ავტობუსის დამატება',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          isAddingDriver
+                              ? 'მძღოლის დამატება'
+                              : 'ავტობუსის დამატება',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: Icon(isAddingDriver 
-                            ? Icons.directions_bus 
-                            : Icons.person_add
-                          ),
+                          icon: Icon(isAddingDriver
+                              ? Icons.directions_bus
+                              : Icons.person_add),
                           onPressed: _toggleMode,
                         ),
-                        // IconButton(
-                        //   icon: const Icon(Icons.close),
-                        //   onPressed: () => Navigator.of(context).pop(),
-                        // ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                
                 if (isAddingDriver) ...[
                   // Driver Form Fields
                   TextFormField(
@@ -169,11 +168,12 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
                       prefixIcon: Icon(Icons.person_outline),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => 
-                      value?.isEmpty ?? true ? 'სახელის ველი სავალდებულოა' : null,
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'სახელის ველი სავალდებულოა'
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   TextFormField(
                     controller: _lastNameController,
                     decoration: const InputDecoration(
@@ -181,11 +181,12 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
                       prefixIcon: Icon(Icons.person_outline),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => 
-                      value?.isEmpty ?? true ? 'გვარის ველი სავალდებულოა' : null,
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'გვარის ველი სავალდებულოა'
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   TextFormField(
                     controller: _phoneController,
                     decoration: const InputDecoration(
@@ -202,7 +203,7 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
                     validator: _validatePhone,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   DropdownButtonFormField<String>(
                     value: _selectedBus,
                     decoration: const InputDecoration(
@@ -217,8 +218,8 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
                             ))
                         .toList(),
                     onChanged: (value) => setState(() => _selectedBus = value),
-                    validator: (value) => 
-                      value == null ? 'გთხოვთ,აირჩიოთ ავტობუსი' : null,
+                    validator: (value) =>
+                        value == null ? 'გთხოვთ,აირჩიოთ ავტობუსი' : null,
                   ),
                 ] else ...[
                   // Bus Form Field
@@ -231,16 +232,15 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
                       border: OutlineInputBorder(),
                       hintText: 'შეიყვანეთ ავტობუსის ნომერი (მაგ: 101)',
                     ),
-                    validator: (value) => 
-                      value?.isEmpty ?? true ? 'ნომერის ველი სავალდებულოა' : null,
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'ნომერის ველი სავალდებულოა'
+                        : null,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
                     ],
                   ),
                 ],
-                
                 const SizedBox(height: 24),
-                
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submitForm,
                   style: ElevatedButton.styleFrom(

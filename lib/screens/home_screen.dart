@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Flight> _flights = [];
   // Replace _driverOptions with this
   bool _isLoadingDrivers = false;
-  bool _isLoadingFlights = false;
+
 
   Future<void> _loadDriversAndFlights() async {
     setState(() => _isLoadingDrivers = true);
@@ -49,7 +49,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final fetchedFlights = await _flightService.getAllFlights();
       setState(() {
         _flights = fetchedFlights;
-        _isLoadingFlights = false;
       });
 
     } catch (e) {
@@ -57,19 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadFlights() async {
-    setState(() => _isLoadingFlights = true);
-
-    try {
-      final fetchedFlights = await _flightService.getAllFlights();
-      setState(() {
-        _flights = fetchedFlights;
-        _isLoadingFlights = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingFlights = false);
-    }
-  }
 
   // final List<String> _transferOptions = [
   //   'ვენა',

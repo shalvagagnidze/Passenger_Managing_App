@@ -10,7 +10,7 @@ class AppDrawer extends StatelessWidget {
         color: Colors.white,
         child: Column(
           children: [
-            // Drawer header with app logo or title
+            // Drawer header with app logo or titleS
             DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.blue,
