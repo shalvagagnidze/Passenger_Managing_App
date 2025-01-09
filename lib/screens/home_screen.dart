@@ -5,8 +5,10 @@ import 'package:passenger_managing_app/models/driver.dart';
 import 'package:passenger_managing_app/models/flight.dart';
 import 'package:passenger_managing_app/models/page_state.dart';
 import 'package:passenger_managing_app/models/passenger_data.dart';
+import 'package:passenger_managing_app/services/bus_service.dart';
 import 'package:passenger_managing_app/services/driver_service.dart';
 import 'package:passenger_managing_app/services/flight_service.dart';
+import 'package:passenger_managing_app/utils/sorting_utils.dart';
 import 'package:passenger_managing_app/widgets/app_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,7 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentPageIndex = 0;
   String copiedData = "";
 
-  final DriverService _driverService = DriverService();
+  final BusService _busService = BusService();
+  late final DriverService _driverService;
   final FlightService _flightService = FlightService();
 
   List<Driver> _drivers = [];
@@ -31,15 +34,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingDrivers = false;
   bool _isLoadingFlights = false;
 
-  Future<void> _loadDrivers() async {
+  Future<void> _loadDriversAndFlights() async {
     setState(() => _isLoadingDrivers = true);
 
     try {
       final fetchedDrivers = await _driverService.getAllDrivers();
+
+      fetchedDrivers.sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
       setState(() {
         _drivers = fetchedDrivers;
         _isLoadingDrivers = false;
       });
+
+      final fetchedFlights = await _flightService.getAllFlights();
+      setState(() {
+        _flights = fetchedFlights;
+        _isLoadingFlights = false;
+      });
+
     } catch (e) {
       setState(() => _isLoadingDrivers = false);
     }
@@ -84,6 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _driverService = DriverService(_busService);
+    _loadDriversAndFlights();
     pages.add(PageState());
     pages[0].passengerController.addListener(() => _updateOnlinePassengers(0));
   }
@@ -358,8 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showConfirmDropdown(BuildContext context) async {
-    await _loadFlights();
-    if (_isLoadingFlights) {
+    if (_isLoadingDrivers) {
       showDialog(
         context: context,
         builder: (context) => const AlertDialog(
@@ -453,7 +466,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _showSingleSelectDropdown(BuildContext context) async {
-    await _loadDrivers();
     if (_isLoadingDrivers) {
       showDialog(
         // ignore: use_build_context_synchronously
