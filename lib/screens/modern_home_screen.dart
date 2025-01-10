@@ -9,6 +9,7 @@ import 'package:passenger_managing_app/services/bus_service.dart';
 import 'package:passenger_managing_app/services/driver_service.dart';
 import 'package:passenger_managing_app/services/flight_service.dart';
 import 'package:passenger_managing_app/services/messenger_service.dart';
+import 'package:passenger_managing_app/services/time_table_service.dart';
 import 'package:passenger_managing_app/utils/sorting_utils.dart';
 import 'package:passenger_managing_app/widgets/app_drawer.dart';
 
@@ -64,12 +65,58 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     }
   }
 
+  final TimeTableService _timeTableService = TimeTableService();
+
+  Future<void> _loadNightFlights() async {
+    try {
+      final nightFlights = await _timeTableService.getNightFlights();
+
+      setState(() {
+        // Clear existing pages
+        pages.clear();
+        currentPageIndex = 0;
+
+        // Create a new page for each night flight
+        for (var flight in nightFlights) {
+          final newPage = PageState()
+            ..selectedDate = flight.date
+            ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
+            ..selectedTransferOptions = flight.destinations;
+
+          pages.add(newPage);
+
+          // Set up listener for passenger count
+          newPage.passengerController
+              .addListener(() => _updateOnlinePassengers(pages.length - 1));
+        }
+
+        if (pages.isEmpty) {
+          // Add at least one default page if no night flights found
+          pages.add(PageState());
+          pages[0]
+              .passengerController
+              .addListener(() => _updateOnlinePassengers(0));
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading flights: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   List<String> _tempSelectedTransferOptions = [];
 
   @override
   void initState() {
     super.initState();
     _driverService = DriverService(_busService);
+    _loadNightFlights();
     _loadDriversAndFlights();
     pages.add(PageState());
     pages[0].passengerController.addListener(() => _updateOnlinePassengers(0));
@@ -620,205 +667,205 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     );
   }
 
-  Future<void> _showConfirmDropdown(BuildContext context) async {
-    if (_isLoadingDrivers) {
-      showDialog(
-        context: context,
-        builder: (context) => Center(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: CircularProgressIndicator(
-                color: Colors.blue[700],
-              ),
-            ),
-          ),
-        ),
-      );
-      return;
-    }
+  // Future<void> _showConfirmDropdown(BuildContext context) async {
+  //   if (_isLoadingDrivers) {
+  //     showDialog(
+  //       context: context,
+  //       builder: (context) => Center(
+  //         child: Card(
+  //           child: Padding(
+  //             padding: const EdgeInsets.all(20),
+  //             child: CircularProgressIndicator(
+  //               color: Colors.blue[700],
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //     return;
+  //   }
 
-    PageState page = pages[currentPageIndex];
-    _tempSelectedTransferOptions = List.from(page.selectedTransferOptions);
+  //   PageState page = pages[currentPageIndex];
+  //   _tempSelectedTransferOptions = List.from(page.selectedTransferOptions);
 
-    final List<String> uniqueOptions =
-        _flights.map((flight) => flight.name).toSet().toList();
+  //   final List<String> uniqueOptions =
+  //       _flights.map((flight) => flight.name).toSet().toList();
 
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
-                  maxWidth: 400,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Text(
-                            'აირჩიეთ რეისი',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            child: IconButton(
-                              icon: Icon(Icons.close, color: Colors.grey[600]),
-                              onPressed: () => Navigator.of(context).pop(),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: true,
+  //     builder: (BuildContext context) {
+  //       return StatefulBuilder(
+  //         builder: (BuildContext context, StateSetter setDialogState) {
+  //           return Dialog(
+  //             shape: RoundedRectangleBorder(
+  //               borderRadius: BorderRadius.circular(12),
+  //             ),
+  //             child: Container(
+  //               constraints: BoxConstraints(
+  //                 maxHeight: MediaQuery.of(context).size.height * 0.7,
+  //                 maxWidth: 400,
+  //               ),
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 crossAxisAlignment: CrossAxisAlignment.stretch,
+  //                 children: [
+  //                   // Header
+  //                   Padding(
+  //                     padding: const EdgeInsets.all(20),
+  //                     child: Stack(
+  //                       alignment: Alignment.center,
+  //                       children: [
+  //                         Text(
+  //                           'აირჩიეთ რეისი',
+  //                           style: TextStyle(
+  //                             fontSize: 18,
+  //                             fontWeight: FontWeight.w600,
+  //                             color: Colors.grey[800],
+  //                           ),
+  //                         ),
+  //                         Positioned(
+  //                           right: 0,
+  //                           child: IconButton(
+  //                             icon: Icon(Icons.close, color: Colors.grey[600]),
+  //                             onPressed: () => Navigator.of(context).pop(),
+  //                             padding: EdgeInsets.zero,
+  //                             constraints: const BoxConstraints(),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                   const Divider(height: 1),
 
-                    // Flight List
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: uniqueOptions.map((String value) {
-                            final isSelected =
-                                _tempSelectedTransferOptions.contains(value);
-                            return InkWell(
-                              onTap: () {
-                                setDialogState(() {
-                                  if (isSelected) {
-                                    _tempSelectedTransferOptions.remove(value);
-                                  } else {
-                                    _tempSelectedTransferOptions.add(value);
-                                  }
-                                });
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                child: Row(
-                                  children: [
-                                    AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      width: 20,
-                                      height: 20,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: isSelected
-                                              ? Colors.blue[700]!
-                                              : Colors.grey[400]!,
-                                        ),
-                                        color: isSelected
-                                            ? Colors.blue[700]
-                                            : Colors.transparent,
-                                      ),
-                                      child: isSelected
-                                          ? const Icon(
-                                              Icons.check,
-                                              size: 14,
-                                              color: Colors.white,
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        value,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: Colors.grey[800],
-                                          fontWeight: isSelected
-                                              ? FontWeight.w500
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
+  //                   // Flight List
+  //                   Flexible(
+  //                     child: SingleChildScrollView(
+  //                       child: Column(
+  //                         mainAxisSize: MainAxisSize.min,
+  //                         children: uniqueOptions.map((String value) {
+  //                           final isSelected =
+  //                               _tempSelectedTransferOptions.contains(value);
+  //                           return InkWell(
+  //                             onTap: () {
+  //                               setDialogState(() {
+  //                                 if (isSelected) {
+  //                                   _tempSelectedTransferOptions.remove(value);
+  //                                 } else {
+  //                                   _tempSelectedTransferOptions.add(value);
+  //                                 }
+  //                               });
+  //                             },
+  //                             child: Padding(
+  //                               padding: const EdgeInsets.symmetric(
+  //                                 horizontal: 20,
+  //                                 vertical: 12,
+  //                               ),
+  //                               child: Row(
+  //                                 children: [
+  //                                   AnimatedContainer(
+  //                                     duration:
+  //                                         const Duration(milliseconds: 200),
+  //                                     width: 20,
+  //                                     height: 20,
+  //                                     decoration: BoxDecoration(
+  //                                       borderRadius: BorderRadius.circular(4),
+  //                                       border: Border.all(
+  //                                         color: isSelected
+  //                                             ? Colors.blue[700]!
+  //                                             : Colors.grey[400]!,
+  //                                       ),
+  //                                       color: isSelected
+  //                                           ? Colors.blue[700]
+  //                                           : Colors.transparent,
+  //                                     ),
+  //                                     child: isSelected
+  //                                         ? const Icon(
+  //                                             Icons.check,
+  //                                             size: 14,
+  //                                             color: Colors.white,
+  //                                           )
+  //                                         : null,
+  //                                   ),
+  //                                   const SizedBox(width: 12),
+  //                                   Expanded(
+  //                                     child: Text(
+  //                                       value,
+  //                                       style: TextStyle(
+  //                                         fontSize: 15,
+  //                                         color: Colors.grey[800],
+  //                                         fontWeight: isSelected
+  //                                             ? FontWeight.w500
+  //                                             : FontWeight.normal,
+  //                                       ),
+  //                                     ),
+  //                                   ),
+  //                                 ],
+  //                               ),
+  //                             ),
+  //                           );
+  //                         }).toList(),
+  //                       ),
+  //                     ),
+  //                   ),
 
-                    // Actions
-                    const Divider(height: 1),
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text(
-                              'გაუქმება',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            height: 36,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  page.selectedTransferOptions =
-                                      List.from(_tempSelectedTransferOptions);
-                                });
-                                Navigator.of(context).pop();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue[700],
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              child: Text(
-                                'არჩევა',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  //                   // Actions
+  //                   const Divider(height: 1),
+  //                   Padding(
+  //                     padding: const EdgeInsets.all(12),
+  //                     child: Row(
+  //                       mainAxisAlignment: MainAxisAlignment.end,
+  //                       children: [
+  //                         TextButton(
+  //                           onPressed: () => Navigator.of(context).pop(),
+  //                           child: Text(
+  //                             'გაუქმება',
+  //                             style: TextStyle(
+  //                               color: Colors.grey[700],
+  //                             ),
+  //                           ),
+  //                         ),
+  //                         const SizedBox(width: 8),
+  //                         SizedBox(
+  //                           height: 36,
+  //                           child: ElevatedButton(
+  //                             onPressed: () {
+  //                               setState(() {
+  //                                 page.selectedTransferOptions =
+  //                                     List.from(_tempSelectedTransferOptions);
+  //                               });
+  //                               Navigator.of(context).pop();
+  //                             },
+  //                             style: ElevatedButton.styleFrom(
+  //                               backgroundColor: Colors.blue[700],
+  //                               padding: const EdgeInsets.symmetric(
+  //                                 horizontal: 16,
+  //                               ),
+  //                               elevation: 0,
+  //                               shape: RoundedRectangleBorder(
+  //                                 borderRadius: BorderRadius.circular(6),
+  //                               ),
+  //                             ),
+  //                             child: Text(
+  //                               'არჩევა',
+  //                               style: TextStyle(
+  //                                 color: Colors.white,
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
 
   Future<void> _showSingleSelectDropdown(BuildContext context) async {
     if (_isLoadingDrivers) {
@@ -1256,7 +1303,6 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
 
   void _resetPage(int pageIndex) {
     setState(() {
-      
       PageState currentPage = pages[pageIndex];
       currentPage.selectedDate = DateTime.now();
       currentPage.selectedTime = TimeOfDay.now();
@@ -1516,7 +1562,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => _showConfirmDropdown(context),
+             // onTap: () => _showConfirmDropdown(context),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
