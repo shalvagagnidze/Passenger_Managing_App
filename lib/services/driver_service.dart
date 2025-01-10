@@ -51,4 +51,53 @@ class DriverService {
     }
   }
 
+  Future<void> updateDriver(Driver driver) async {
+    try {
+      // First, get all buses to find the matching bus ID
+      final buses = await _busService.getAllBuses();
+      final bus = buses.firstWhere(
+        (bus) => bus.number == driver.busNumber,
+        orElse: () => throw Exception('Bus not found with number: ${driver.busNumber}'),
+      );
+
+      // Prepare the update data according to your API model
+      final updateData = {
+        'id': driver.id,
+        'firstName': driver.firstName,
+        'lastName': driver.lastName,
+        'phoneNumber': driver.phoneNumber.startsWith('+995') 
+            ? driver.phoneNumber.substring(4) // Remove +995 if it exists
+            : driver.phoneNumber,
+        'busId': bus.id, // Use the bus ID from the matched bus
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/Driver/update'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(updateData),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update driver: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error updating driver: $e');
+    }
+  }
+
+  Future<void> deleteDriver(int driverId) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/Driver/delete/$driverId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete driver: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting driver: $e');
+    }
+  }
+
 }

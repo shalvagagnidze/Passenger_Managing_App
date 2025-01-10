@@ -5,18 +5,18 @@ import 'package:passenger_managing_app/services/driver_service.dart';
 import 'package:passenger_managing_app/services/bus_service.dart';
 
 class AddEntityDialog extends StatefulWidget {
-  const AddEntityDialog({
-    Key? key,
-    required this.existingBuses,
-    required this.driverService,
-    required this.busService,
-    required this.onSuccess,
-  }) : super(key: key);
-
   final List<String> existingBuses;
   final DriverService driverService;
   final BusService busService;
   final VoidCallback onSuccess;
+
+  const AddEntityDialog(
+      {Key? key,
+      required this.existingBuses,
+      required this.driverService,
+      required this.busService,
+      required this.onSuccess})
+      : super(key: key);
 
   @override
   _AddEntityDialogState createState() => _AddEntityDialogState();
@@ -63,10 +63,10 @@ class _AddEntityDialogState extends State<AddEntityDialog> {
 
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Phone number is required';
+      return 'ტელეფონის ველი აუცილებელია';
     }
     if (!RegExp(r'^[0-9]{9}$').hasMatch(value)) {
-      return 'Enter a valid 9-digit phone number';
+      return 'გთხოვთ, შეიყვანოთ 9-ნიშნა ნომერი';
     }
     return null;
   }

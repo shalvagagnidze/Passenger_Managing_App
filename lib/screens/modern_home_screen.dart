@@ -20,6 +20,7 @@ class ModernHomeScreen extends StatefulWidget {
 }
 
 class _ModernHomeScreenState extends State<ModernHomeScreen> {
+  final PageController _pageController = PageController();
   List<PageState> pages = [];
   // List to store page states
   int currentPageIndex = 0;
@@ -33,25 +34,32 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
   List<Flight> _flights = [];
   // Replace _driverOptions with this
   bool _isLoadingDrivers = false;
-
   Future<void> _loadDriversAndFlights() async {
+    if (!mounted) return;
+
     setState(() => _isLoadingDrivers = true);
 
     try {
+      // Fetch and sort drivers
       final fetchedDrivers = await _driverService.getAllDrivers();
-
       fetchedDrivers
           .sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
+
+      // Fetch and sort flights
+      final fetchedFlights = await _flightService.getAllFlights();
+      fetchedFlights.sort(
+          (a, b) => a.name.compareTo(b.name)); // Sort flights alphabetically
+
+      if (!mounted) return;
+
       setState(() {
         _drivers = fetchedDrivers;
+        _flights = fetchedFlights;
         _isLoadingDrivers = false;
       });
-
-      final fetchedFlights = await _flightService.getAllFlights();
-      setState(() {
-        _flights = fetchedFlights;
-      });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() => _isLoadingDrivers = false);
     }
   }
@@ -65,6 +73,22 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     _loadDriversAndFlights();
     pages.add(PageState());
     pages[0].passengerController.addListener(() => _updateOnlinePassengers(0));
+
+    _pageController.addListener(() {
+      // Update currentPageIndex when page changes
+      final newPage = _pageController.page?.round() ?? 0;
+      if (newPage != currentPageIndex) {
+        setState(() {
+          currentPageIndex = newPage;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   void _addNewPage() {
@@ -74,15 +98,23 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       pages[currentPageIndex].passengerController.addListener(
             () => _updateOnlinePassengers(currentPageIndex),
           );
+
+      _pageController.animateToPage(
+        currentPageIndex,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
-  void _navigateToPage(int index) {
-    if (index >= 0 && index < pages.length) {
-      setState(() {
-        currentPageIndex = index;
-      });
+  double _calculateTotalCashAmount() {
+    double totalAmount = 0;
+    for (var page in pages) {
+      // Use the existing toPassengerData method to get the cash amount
+      PassengerData pageData = page.toPassengerData();
+      totalAmount += pageData.totalCashAmount;
     }
+    return totalAmount;
   }
 
   void _updateCount(String type, bool increment) {
@@ -1122,9 +1154,138 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     );
   }
 
+  Future<bool> _showResetConfirmation() async {
+    bool shouldReset = false;
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.refresh,
+                    color: Colors.orange[700],
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'გასუფთავება',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'დარწმუნებული ხარ რომ გსურს გვერდის გასუფთავება?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        shouldReset = false;
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        'გაუქმება',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        shouldReset = true;
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.refresh, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'დიახ',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    return shouldReset;
+  }
+
+  void _resetPage(int pageIndex) {
+    setState(() {
+      
+      PageState currentPage = pages[pageIndex];
+      currentPage.selectedDate = DateTime.now();
+      currentPage.selectedTime = TimeOfDay.now();
+      currentPage.passengerController.clear();
+      currentPage.onTheWayController.clear();
+      currentPage.freePassengersController.clear();
+      currentPage.passengerCount = 0;
+      currentPage.onlinePassengerCount = 0;
+      currentPage.cashPassengerCount = 0;
+      currentPage.cardPassengerCount = 0;
+      currentPage.wizzPassengerCount = 0;
+      currentPage.showCashChildCounter = false;
+      currentPage.showCardChildCounter = false;
+      currentPage.cashChildPassengerCount = 0;
+      currentPage.cardChildPassengerCount = 0;
+      currentPage.showOnTheWay = false;
+      currentPage.onTheWayCashCount = 0;
+      currentPage.showFreePessangers = false;
+      currentPage.freePassengersCount = 0;
+      currentPage.selectedTransferOptions = [];
+      currentPage.selectedSingleOption = '';
+      currentPage.selectedDriverName = '';
+    });
+  }
+
   Widget _buildTopBar() {
+    double totalCashAmount = _calculateTotalCashAmount();
+
     return Builder(
-        // Add this Builder widget
         builder: (BuildContext context) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               height: 65,
@@ -1173,28 +1334,56 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.file_copy_outlined,
-                            size: 18, color: Colors.blue[700]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${currentPageIndex + 1}/${pages.length}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w500,
-                          ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.file_copy_outlined,
+                                size: 18, color: Colors.blue[700]),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${currentPageIndex + 1}/${pages.length}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.blue[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.attach_money,
+                                size: 18, color: Colors.green[700]),
+                            const SizedBox(width: 1),
+                            Text(
+                              '${totalCashAmount.toStringAsFixed(2)} ₾',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const Spacer(),
                   IconButton(
@@ -1777,6 +1966,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
   }
 
   Widget _buildBottomNavigation() {
+    double currentPageCashAmount =
+        pages[currentPageIndex].toPassengerData().totalCashAmount;
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1796,13 +1988,29 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios),
-              color: Colors.green,
-              onPressed: currentPageIndex > 0
-                  ? () => _navigateToPage(currentPageIndex - 1)
-                  : null,
+            // Total Cash Amount Display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.attach_money, size: 20, color: Colors.green[700]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${currentPageCashAmount.toStringAsFixed(2)} ₾',
+                    style: TextStyle(
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            // Copy Button
             ElevatedButton(
               onPressed: () => _showCustomDialog(context),
               style: ElevatedButton.styleFrom(
@@ -1820,13 +2028,6 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
                   Text('კოპირება'),
                 ],
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios),
-              color: Colors.green,
-              onPressed: currentPageIndex < pages.length - 1
-                  ? () => _navigateToPage(currentPageIndex + 1)
-                  : null,
             ),
           ],
         ),
@@ -1912,18 +2113,51 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       backgroundColor: Colors.grey[50],
       drawer: const AppDrawer(),
       body: Builder(
-        // Add this Builder widget
         builder: (BuildContext context) => SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                _buildDateTimeSection(),
-                _buildSelectionSection(),
-                _buildPassengerCounters(),
-                _buildBottomNavigation(),
-              ],
-            ),
+          child: Column(
+            children: [
+              _buildTopBar(),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: pages.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      currentPageIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        bool shouldReset = await _showResetConfirmation();
+                        if (shouldReset) {
+                          _resetPage(currentPageIndex);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('გვერდი განახლდა'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            _buildDateTimeSection(),
+                            _buildSelectionSection(),
+                            _buildPassengerCounters(),
+                            _buildBottomNavigation(),
+                            // Add extra space to ensure scrollability
+                            //SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),

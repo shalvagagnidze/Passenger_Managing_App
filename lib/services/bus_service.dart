@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:passenger_managing_app/models/bus.dart';
 import 'package:passenger_managing_app/utils/sorting_utils.dart';
 
 class BusService {
@@ -25,23 +26,20 @@ class BusService {
     }
   }
 
-  Future<List<String>> getAllBuses() async {
+  Future<List<Bus>> getAllBuses() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/Bus/get-all-buses'));
-
+      
       if (response.statusCode == 200) {
         final List<dynamic> jsonData = json.decode(response.body);
-        final buses = jsonData.map((json) => json['number'] as String).toList();
-        
-        buses.sort(compareDriversByBusNumber);
-
+        final buses = jsonData.map((json) => Bus.fromJson(json)).toList();
+        buses.sort((a, b) => compareDriversByBusNumber(a.number, b.number));
         return buses;
       } else {
-        throw Exception(
-            'პრობლემა ავტობუსების ჩატვირთვისას: ${response.statusCode}');
+        throw Exception('Failed to load buses: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('პრობლემა ავტობუსების ჩატვირთვისას: $e');
+      throw Exception('Failed to load buses: $e');
     }
   }
 
