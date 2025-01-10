@@ -110,7 +110,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     }
   }
 
-  List<String> _tempSelectedTransferOptions = [];
+  final List<String> _tempSelectedTransferOptions = [];
 
   @override
   void initState() {

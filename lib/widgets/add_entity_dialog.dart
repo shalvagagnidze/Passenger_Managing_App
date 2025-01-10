@@ -11,12 +11,11 @@ class AddEntityDialog extends StatefulWidget {
   final VoidCallback onSuccess;
 
   const AddEntityDialog(
-      {Key? key,
+      {super.key,
       required this.existingBuses,
       required this.driverService,
       required this.busService,
-      required this.onSuccess})
-      : super(key: key);
+      required this.onSuccess});
 
   @override
   _AddEntityDialogState createState() => _AddEntityDialogState();

@@ -758,9 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         foregroundColor:
                                             Colors.blue, // Button text color
                                       ),
-                                    ),
-                                    dialogBackgroundColor:
-                                        Colors.white, // Dialog background color
+                                    ), dialogTheme: DialogThemeData(backgroundColor: Colors.white), // Dialog background color
                                   ),
                                   child: child!,
                                 ),

@@ -24,7 +24,7 @@
         <package android:name="com.facebook.orca" />
     </queries>
     <application
-        android:label="passenger_managing_app"
+        android:label="Georgian Bus"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
