@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:passenger_managing_app/models/driver.dart';
-import 'package:passenger_managing_app/models/flight.dart';
+import 'package:passenger_managing_app/models/night_flight.dart';
 import 'package:passenger_managing_app/models/page_state.dart';
 import 'package:passenger_managing_app/models/passenger_data.dart';
 import 'package:passenger_managing_app/services/bus_service.dart';
 import 'package:passenger_managing_app/services/driver_service.dart';
-import 'package:passenger_managing_app/services/flight_service.dart';
 import 'package:passenger_managing_app/services/messenger_service.dart';
 import 'package:passenger_managing_app/services/time_table_service.dart';
+import 'package:passenger_managing_app/utils/screen_state_manager.dart';
 import 'package:passenger_managing_app/utils/sorting_utils.dart';
 import 'package:passenger_managing_app/widgets/app_drawer.dart';
 
@@ -22,17 +22,22 @@ class ModernHomeScreen extends StatefulWidget {
 
 class _ModernHomeScreenState extends State<ModernHomeScreen> {
   final PageController _pageController = PageController();
-  List<PageState> pages = [];
+  final ScreenStateManager _stateManager = ScreenStateManager();
+
+  List<PageState> get pages => _stateManager.pages;
+  set pages(List<PageState> value) => _stateManager.pages = value;
+  //List<PageState> pages = [];
   // List to store page states
-  int currentPageIndex = 0;
+  //int currentPageIndex = 0;
+  int get currentPageIndex => _stateManager.currentPageIndex;
+  set currentPageIndex(int value) => _stateManager.currentPageIndex = value;
   String copiedData = "";
 
   final BusService _busService = BusService();
   late final DriverService _driverService;
-  final FlightService _flightService = FlightService();
+  // final FlightService _flightService = FlightService();
 
   List<Driver> _drivers = [];
-  List<Flight> _flights = [];
   // Replace _driverOptions with this
   bool _isLoadingDrivers = false;
   Future<void> _loadDriversAndFlights() async {
@@ -47,15 +52,14 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
           .sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
 
       // Fetch and sort flights
-      final fetchedFlights = await _flightService.getAllFlights();
-      fetchedFlights.sort(
-          (a, b) => a.name.compareTo(b.name)); // Sort flights alphabetically
+      // final fetchedFlights = await _flightService.getAllFlights();
+      // fetchedFlights.sort(
+      //     (a, b) => a.name.compareTo(b.name)); // Sort flights alphabetically
 
       if (!mounted) return;
 
       setState(() {
         _drivers = fetchedDrivers;
-        _flights = fetchedFlights;
         _isLoadingDrivers = false;
       });
     } catch (e) {
@@ -67,11 +71,15 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
 
   final TimeTableService _timeTableService = TimeTableService();
 
+  final List<NightFlight> _nightFlights = [];
+
   Future<void> _loadNightFlights() async {
     try {
       final nightFlights = await _timeTableService.getNightFlights();
 
       setState(() {
+        // _nightFlights = nightFlights;
+        _stateManager.nightFlights = nightFlights;
         // Clear existing pages
         pages.clear();
         currentPageIndex = 0;
@@ -110,16 +118,34 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     }
   }
 
-  final List<String> _tempSelectedTransferOptions = [];
-
   @override
   void initState() {
     super.initState();
     _driverService = DriverService(_busService);
-    _loadNightFlights();
-    _loadDriversAndFlights();
-    pages.add(PageState());
-    pages[0].passengerController.addListener(() => _updateOnlinePassengers(0));
+
+    if (!_stateManager.isInitialized) {
+      _loadNightFlights();
+      _loadDriversAndFlights();
+      _stateManager.isInitialized = true;
+    } else {
+      // If already initialized, just set the page controller to the correct page
+      Future.microtask(() {
+        _pageController.jumpToPage(currentPageIndex);
+      });
+    }
+    //_loadNightFlights();
+    // _loadDriversAndFlights();
+    if (pages.isEmpty) {
+      pages.add(PageState());
+      pages[0]
+          .passengerController
+          .addListener(() => _updateOnlinePassengers(0));
+    } else {
+      Future.microtask(() {
+        _pageController.jumpToPage(currentPageIndex);
+      });
+      _loadDriversAndFlights();
+    }
 
     _pageController.addListener(() {
       // Update currentPageIndex when page changes
@@ -415,112 +441,42 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
   void _showAllPagesDialog(BuildContext context) {
     if (pages.isEmpty) return;
 
-    // Validate all pages before showing dialog
-    for (var i = 0; i < pages.length; i++) {
-      PageState page = pages[i];
-      String errorMessage = '';
+    // Filter out pages without passengers
+    final validPages = pages
+        .where((page) =>
+            page.passengerController.text.isNotEmpty &&
+            int.parse(page.passengerController.text) > 0)
+        .toList();
 
-      if (page.passengerController.text.isEmpty ||
-          int.parse(page.passengerController.text) == 0) {
-        errorMessage += 'გვერდი ${i + 1}: მგზავრების რაოდენობა სავალდებულოა\n';
-      }
-
-      if (page.selectedTransferOptions.isEmpty) {
-        errorMessage += 'გვერდი ${i + 1}: გთხოვთ აირჩიოთ რეისი\n';
-      }
-
-      if (page.selectedSingleOption.isEmpty) {
-        errorMessage += 'გვერდი ${i + 1}: გთხოვთ აირჩიოთ ავტობუსი\n';
-      }
-
-      if (page.showFreePessangers) {
-        if (page.freePassengersController.text.isEmpty ||
-            int.parse(page.freePassengersController.text) == 0) {
-          errorMessage +=
-              'გვერდი ${i + 1}: უფასო მგზავრების რაოდენობა არ შეიძლება იყოს 0\n';
-        }
-      }
-
-      if (page.showOnTheWay) {
-        if (page.onTheWayController.text.isEmpty ||
-            int.parse(page.onTheWayController.text) == 0) {
-          errorMessage +=
-              'გვერდი ${i + 1}: გზაში მყოფი მგზავრების რაოდენობა არ შეიძლება იყოს 0\n';
-        }
-      }
-
-      if (errorMessage.isNotEmpty) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Text(
-                          'შეცდომა',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          child: IconButton(
-                            icon: Icon(Icons.close, color: Colors.grey[600]),
-                            onPressed: () => Navigator.of(context).pop(),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text(errorMessage),
-                  ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-        return;
-      }
+    if (validPages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('არ არის შევსებული არცერთი გვერდი'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
 
-    // If validation passes, collect data from all pages
-    final String allPagesData = pages
-        .asMap()
-        .entries
-        .map((entry) => entry.value.toPassengerData().toFormattedString())
+    // Check for pages missing bus driver selection
+    final missingDriverPages =
+        validPages.where((page) => page.selectedSingleOption.isEmpty).toList();
+
+    // Build the complete string including warning if necessary
+    String allPagesData = '';
+    if (missingDriverPages.isNotEmpty) {
+      allPagesData = 'გთხოვთ აირჩიოთ ავტობუსი შემდეგ გვერდებზე:\n';
+      for (int i = 0; i < pages.length; i++) {
+        if (missingDriverPages.contains(pages[i])) {
+          allPagesData += 'გვერდი ${i + 1}\n';
+        }
+      }
+      allPagesData += '\n';
+    }
+
+    // Add the regular data
+    allPagesData += validPages
+        .map((page) => page.toPassengerData().toFormattedString())
         .join('\n\n');
 
     showDialog(
@@ -562,6 +518,27 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
               ),
               const Divider(height: 1),
 
+              if (missingDriverPages.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.red[50],
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'ზოგიერთ გვერდზე არ არის არჩეული ავტობუსი',
+                          style: TextStyle(
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Content
               Flexible(
                 child: SingleChildScrollView(
@@ -581,8 +558,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceBetween, // This will push buttons to edges
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
                       onPressed: () async {
@@ -650,7 +626,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'კოპირება',
                         style: TextStyle(
                           color: Colors.white,
@@ -667,205 +643,154 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     );
   }
 
-  // Future<void> _showConfirmDropdown(BuildContext context) async {
-  //   if (_isLoadingDrivers) {
-  //     showDialog(
-  //       context: context,
-  //       builder: (context) => Center(
-  //         child: Card(
-  //           child: Padding(
-  //             padding: const EdgeInsets.all(20),
-  //             child: CircularProgressIndicator(
-  //               color: Colors.blue[700],
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     );
-  //     return;
-  //   }
+  Future<void> _showFlightSelectionDialog(BuildContext context) async {
+    if (_nightFlights.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No flights available'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-  //   PageState page = pages[currentPageIndex];
-  //   _tempSelectedTransferOptions = List.from(page.selectedTransferOptions);
+    PageState page = pages[currentPageIndex];
+    List<String> tempSelectedFlights = List.from(page.selectedTransferOptions);
 
-  //   final List<String> uniqueOptions =
-  //       _flights.map((flight) => flight.name).toSet().toList();
+    // Create a list of all unique destinations
+    Set<String> uniqueDestinations = {};
+    for (var flight in _nightFlights) {
+      for (var destination in flight.destinations) {
+        // Split destinations if they contain commas
+        destination.split(',').forEach((dest) {
+          uniqueDestinations.add(dest.trim());
+        });
+      }
+    }
 
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: true,
-  //     builder: (BuildContext context) {
-  //       return StatefulBuilder(
-  //         builder: (BuildContext context, StateSetter setDialogState) {
-  //           return Dialog(
-  //             shape: RoundedRectangleBorder(
-  //               borderRadius: BorderRadius.circular(12),
-  //             ),
-  //             child: Container(
-  //               constraints: BoxConstraints(
-  //                 maxHeight: MediaQuery.of(context).size.height * 0.7,
-  //                 maxWidth: 400,
-  //               ),
-  //               child: Column(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 crossAxisAlignment: CrossAxisAlignment.stretch,
-  //                 children: [
-  //                   // Header
-  //                   Padding(
-  //                     padding: const EdgeInsets.all(20),
-  //                     child: Stack(
-  //                       alignment: Alignment.center,
-  //                       children: [
-  //                         Text(
-  //                           'აირჩიეთ რეისი',
-  //                           style: TextStyle(
-  //                             fontSize: 18,
-  //                             fontWeight: FontWeight.w600,
-  //                             color: Colors.grey[800],
-  //                           ),
-  //                         ),
-  //                         Positioned(
-  //                           right: 0,
-  //                           child: IconButton(
-  //                             icon: Icon(Icons.close, color: Colors.grey[600]),
-  //                             onPressed: () => Navigator.of(context).pop(),
-  //                             padding: EdgeInsets.zero,
-  //                             constraints: const BoxConstraints(),
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                   const Divider(height: 1),
-
-  //                   // Flight List
-  //                   Flexible(
-  //                     child: SingleChildScrollView(
-  //                       child: Column(
-  //                         mainAxisSize: MainAxisSize.min,
-  //                         children: uniqueOptions.map((String value) {
-  //                           final isSelected =
-  //                               _tempSelectedTransferOptions.contains(value);
-  //                           return InkWell(
-  //                             onTap: () {
-  //                               setDialogState(() {
-  //                                 if (isSelected) {
-  //                                   _tempSelectedTransferOptions.remove(value);
-  //                                 } else {
-  //                                   _tempSelectedTransferOptions.add(value);
-  //                                 }
-  //                               });
-  //                             },
-  //                             child: Padding(
-  //                               padding: const EdgeInsets.symmetric(
-  //                                 horizontal: 20,
-  //                                 vertical: 12,
-  //                               ),
-  //                               child: Row(
-  //                                 children: [
-  //                                   AnimatedContainer(
-  //                                     duration:
-  //                                         const Duration(milliseconds: 200),
-  //                                     width: 20,
-  //                                     height: 20,
-  //                                     decoration: BoxDecoration(
-  //                                       borderRadius: BorderRadius.circular(4),
-  //                                       border: Border.all(
-  //                                         color: isSelected
-  //                                             ? Colors.blue[700]!
-  //                                             : Colors.grey[400]!,
-  //                                       ),
-  //                                       color: isSelected
-  //                                           ? Colors.blue[700]
-  //                                           : Colors.transparent,
-  //                                     ),
-  //                                     child: isSelected
-  //                                         ? const Icon(
-  //                                             Icons.check,
-  //                                             size: 14,
-  //                                             color: Colors.white,
-  //                                           )
-  //                                         : null,
-  //                                   ),
-  //                                   const SizedBox(width: 12),
-  //                                   Expanded(
-  //                                     child: Text(
-  //                                       value,
-  //                                       style: TextStyle(
-  //                                         fontSize: 15,
-  //                                         color: Colors.grey[800],
-  //                                         fontWeight: isSelected
-  //                                             ? FontWeight.w500
-  //                                             : FontWeight.normal,
-  //                                       ),
-  //                                     ),
-  //                                   ),
-  //                                 ],
-  //                               ),
-  //                             ),
-  //                           );
-  //                         }).toList(),
-  //                       ),
-  //                     ),
-  //                   ),
-
-  //                   // Actions
-  //                   const Divider(height: 1),
-  //                   Padding(
-  //                     padding: const EdgeInsets.all(12),
-  //                     child: Row(
-  //                       mainAxisAlignment: MainAxisAlignment.end,
-  //                       children: [
-  //                         TextButton(
-  //                           onPressed: () => Navigator.of(context).pop(),
-  //                           child: Text(
-  //                             'გაუქმება',
-  //                             style: TextStyle(
-  //                               color: Colors.grey[700],
-  //                             ),
-  //                           ),
-  //                         ),
-  //                         const SizedBox(width: 8),
-  //                         SizedBox(
-  //                           height: 36,
-  //                           child: ElevatedButton(
-  //                             onPressed: () {
-  //                               setState(() {
-  //                                 page.selectedTransferOptions =
-  //                                     List.from(_tempSelectedTransferOptions);
-  //                               });
-  //                               Navigator.of(context).pop();
-  //                             },
-  //                             style: ElevatedButton.styleFrom(
-  //                               backgroundColor: Colors.blue[700],
-  //                               padding: const EdgeInsets.symmetric(
-  //                                 horizontal: 16,
-  //                               ),
-  //                               elevation: 0,
-  //                               shape: RoundedRectangleBorder(
-  //                                 borderRadius: BorderRadius.circular(6),
-  //                               ),
-  //                             ),
-  //                             child: Text(
-  //                               'არჩევა',
-  //                               style: TextStyle(
-  //                                 color: Colors.white,
-  //                               ),
-  //                             ),
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                  maxWidth: 400,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Text(
+                            'აირჩიეთ რეისი',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            child: IconButton(
+                              icon: Icon(Icons.close, color: Colors.grey[600]),
+                              onPressed: () => Navigator.pop(context),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: uniqueDestinations.map((destination) {
+                            bool isSelected =
+                                tempSelectedFlights.contains(destination);
+                            return ListTile(
+                              title: Text(destination),
+                              leading: Icon(
+                                Icons.flight_takeoff,
+                                color: Colors.blue[700],
+                              ),
+                              trailing: Checkbox(
+                                value: isSelected,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    if (value ?? false) {
+                                      if (!tempSelectedFlights
+                                          .contains(destination)) {
+                                        tempSelectedFlights.add(destination);
+                                      }
+                                    } else {
+                                      tempSelectedFlights.remove(destination);
+                                    }
+                                  });
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'გაუქმება',
+                              style: TextStyle(color: Colors.grey[700]),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              this.setState(() {
+                                page.selectedTransferOptions =
+                                    tempSelectedFlights;
+                              });
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[700],
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            child: const Text(
+                              'არჩევა',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _showSingleSelectDropdown(BuildContext context) async {
     if (_isLoadingDrivers) {
@@ -1328,6 +1253,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     });
   }
 
+
   Widget _buildTopBar() {
     double totalCashAmount = _calculateTotalCashAmount();
 
@@ -1562,7 +1488,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-             // onTap: () => _showConfirmDropdown(context),
+              onTap: () => _showFlightSelectionDialog(context),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -2004,6 +1930,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
               ],
+              onChanged: (value) {
+                _updateOnlinePassengers(currentPageIndex);
+              },
             ),
           ),
         ],

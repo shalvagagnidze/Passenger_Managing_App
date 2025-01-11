@@ -30,6 +30,76 @@ class _DriversScreenState extends State<DriversScreen> {
     _loadDrivers();
   }
 
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'შეცდომა',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _loadDrivers();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'ხელახლა ცდა',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _loadDrivers() async {
     try {
       setState(() {
@@ -48,11 +118,18 @@ class _DriversScreenState extends State<DriversScreen> {
         _buses = buses;
         isLoading = false;
       });
+      if (drivers.isEmpty) {
+        // Using Future.delayed to avoid calling setState during build
+        Future.microtask(() => _showErrorDialog('მძღოლების სია ცარიელია'));
+      }
     } catch (e) {
       setState(() {
         error = e.toString();
         isLoading = false;
       });
+      // Show error dialog
+      Future.microtask(
+          () => _showErrorDialog('მძღოლების ჩატვირთვა ვერ მომხერხდა'));
     }
   }
 
@@ -62,7 +139,9 @@ class _DriversScreenState extends State<DriversScreen> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AddEntityDialog(
-          existingBuses:_buses.map((bus) => bus.number).toList(), // Use buses from BusService
+          existingBuses: _buses
+              .map((bus) => bus.number)
+              .toList(), // Use buses from BusService
           driverService: _driverService,
           busService: _busService,
           onSuccess: () {
@@ -107,7 +186,6 @@ class _DriversScreenState extends State<DriversScreen> {
               // Header
               Row(
                 children: [
-                  
                   const SizedBox(width: 16),
                   const Text(
                     'მძღოლის განახლება',
@@ -134,7 +212,7 @@ class _DriversScreenState extends State<DriversScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: lastNameController,
                 decoration: InputDecoration(
@@ -148,7 +226,7 @@ class _DriversScreenState extends State<DriversScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               TextField(
                 controller: phoneController,
                 decoration: InputDecoration(
@@ -162,7 +240,7 @@ class _DriversScreenState extends State<DriversScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               DropdownButtonFormField<String>(
                 value: selectedBus,
                 items: _buses
@@ -191,7 +269,8 @@ class _DriversScreenState extends State<DriversScreen> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                     ),
                     child: const Text('გაუქმება'),
                   ),
@@ -206,11 +285,11 @@ class _DriversScreenState extends State<DriversScreen> {
                           phoneNumber: phoneController.text,
                           busNumber: selectedBus,
                         ));
-                        
+
                         // ignore: use_build_context_synchronously
                         Navigator.pop(context);
                         _loadDrivers();
-                        
+
                         // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -229,7 +308,8 @@ class _DriversScreenState extends State<DriversScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -295,7 +375,8 @@ class _DriversScreenState extends State<DriversScreen> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                     ),
                     child: const Text('გაუქმება'),
                   ),
@@ -307,7 +388,7 @@ class _DriversScreenState extends State<DriversScreen> {
                         // ignore: use_build_context_synchronously
                         Navigator.pop(context);
                         _loadDrivers();
-                        
+
                         // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -325,7 +406,8 @@ class _DriversScreenState extends State<DriversScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -361,119 +443,108 @@ class _DriversScreenState extends State<DriversScreen> {
         onRefresh: _loadDrivers,
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Error: $error'),
-                        ElevatedButton(
-                          onPressed: _loadDrivers,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+            : ListView.builder(
+                padding: const EdgeInsets.all(8),
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: drivers.length,
+                itemBuilder: (context, index) {
+                  final driver = drivers[index];
+                  return Dismissible(
+                    key: Key(driver.id.toString()),
+                    background: Container(
+                      color: Colors.orange,
+                      alignment: Alignment.centerLeft,
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 4),
+                      padding: const EdgeInsets.only(left: 20),
+                      child: const Icon(Icons.edit, color: Colors.white),
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: drivers.length,
-                    itemBuilder: (context, index) {
-                      final driver = drivers[index];
-                      return Dismissible(
-                        key: Key(driver.id.toString()),
-                        background: Container(
-                          color: Colors.orange,
-                          alignment: Alignment.centerLeft,
-                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                          padding: const EdgeInsets.only(left: 20),
-                          child: const Icon(Icons.edit, color: Colors.white),
-                        ),
-                        secondaryBackground: Container(
-                          color: Colors.red,
-                          alignment: Alignment.centerRight,
-                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.startToEnd) {
-                            // Update
-                            await _showUpdateDialog(driver);
-                            return false; // Don't dismiss
-                          } else {
-                            // Delete
-                            await _showDeleteConfirmation(driver);
-                            return false; // Don't dismiss, we'll handle it in the dialog
-                          }
-                        },
-                        child: Card(
-                          elevation: 3,
-                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                    secondaryBackground: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 4),
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
+                    ),
+                    confirmDismiss: (direction) async {
+                      if (direction == DismissDirection.startToEnd) {
+                        await _showUpdateDialog(driver);
+                        return false;
+                      } else {
+                        await _showDeleteConfirmation(driver);
+                        return false;
+                      }
+                    },
+                    child: Card(
+                      elevation: 3,
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 4),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person, color: Colors.blue),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      driver.fullName,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.directions_bus, color: Colors.blueGrey),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      driver.busNumber,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.blueGrey,
-                                      ),
-                                    ),
-                                  ],
+                                const Icon(Icons.person, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Text(
+                                  driver.fullName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: GestureDetector(
-                                onTap: () => _makePhoneCall(driver.phoneNumber),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.phone, color: Colors.green),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      driver.phoneNumber,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.green,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                  ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.directions_bus,
+                                    color: Colors.blueGrey),
+                                const SizedBox(width: 8),
+                                Text(
+                                  driver.busNumber,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.blueGrey,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.phone_forwarded),
-                              color: Colors.green,
-                              onPressed: () => _makePhoneCall(driver.phoneNumber),
+                          ],
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: GestureDetector(
+                            onTap: () => _makePhoneCall(driver.phoneNumber),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.phone, color: Colors.green),
+                                const SizedBox(width: 8),
+                                Text(
+                                  driver.phoneNumber,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.green,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.phone_forwarded),
+                          color: Colors.green,
+                          onPressed: () => _makePhoneCall(driver.phoneNumber),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddEntityDialog(),
