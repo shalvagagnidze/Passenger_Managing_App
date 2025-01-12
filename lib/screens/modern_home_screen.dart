@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:passenger_managing_app/models/driver.dart';
-import 'package:passenger_managing_app/models/night_flight.dart';
 import 'package:passenger_managing_app/models/page_state.dart';
 import 'package:passenger_managing_app/models/passenger_data.dart';
 import 'package:passenger_managing_app/services/bus_service.dart';
@@ -71,7 +70,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
 
   final TimeTableService _timeTableService = TimeTableService();
 
-  final List<NightFlight> _nightFlights = [];
+  //final List<NightFlight> _nightFlights = [];
 
   Future<void> _loadNightFlights() async {
     try {
@@ -124,31 +123,28 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     _driverService = DriverService(_busService);
 
     if (!_stateManager.isInitialized) {
+      // First time initialization
       _loadNightFlights();
       _loadDriversAndFlights();
       _stateManager.isInitialized = true;
+
+      // Add initial page if needed
+      if (pages.isEmpty) {
+        pages.add(PageState());
+        pages[0]
+            .passengerController
+            .addListener(() => _updateOnlinePassengers(0));
+      }
     } else {
-      // If already initialized, just set the page controller to the correct page
+      // Just restore existing state
+      _loadDriversAndFlights(); // Refresh drivers list only
       Future.microtask(() {
         _pageController.jumpToPage(currentPageIndex);
       });
-    }
-    //_loadNightFlights();
-    // _loadDriversAndFlights();
-    if (pages.isEmpty) {
-      pages.add(PageState());
-      pages[0]
-          .passengerController
-          .addListener(() => _updateOnlinePassengers(0));
-    } else {
-      Future.microtask(() {
-        _pageController.jumpToPage(currentPageIndex);
-      });
-      _loadDriversAndFlights();
     }
 
+    // Set up page controller listener
     _pageController.addListener(() {
-      // Update currentPageIndex when page changes
       final newPage = _pageController.page?.round() ?? 0;
       if (newPage != currentPageIndex) {
         setState(() {
@@ -644,7 +640,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
   }
 
   Future<void> _showFlightSelectionDialog(BuildContext context) async {
-    if (_nightFlights.isEmpty) {
+    if (_stateManager.nightFlights.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No flights available'),
@@ -659,7 +655,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
 
     // Create a list of all unique destinations
     Set<String> uniqueDestinations = {};
-    for (var flight in _nightFlights) {
+    for (var flight in _stateManager.nightFlights) {
       for (var destination in flight.destinations) {
         // Split destinations if they contain commas
         destination.split(',').forEach((dest) {
@@ -1252,7 +1248,6 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       currentPage.selectedDriverName = '';
     });
   }
-
 
   Widget _buildTopBar() {
     double totalCashAmount = _calculateTotalCashAmount();

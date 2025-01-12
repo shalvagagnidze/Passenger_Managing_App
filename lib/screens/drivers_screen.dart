@@ -425,6 +425,11 @@ class _DriversScreenState extends State<DriversScreen> {
     );
   }
 
+  double _calculateFontSize(String text) {
+    if (text.length <= 20) return 18;
+    return 17;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -491,10 +496,13 @@ class _DriversScreenState extends State<DriversScreen> {
                                 const SizedBox(width: 8),
                                 Text(
                                   driver.fullName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
+                                  style: TextStyle(
+                                    fontSize:
+                                        _calculateFontSize(driver.fullName),
                                     fontWeight: FontWeight.bold,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
                               ],
                             ),
