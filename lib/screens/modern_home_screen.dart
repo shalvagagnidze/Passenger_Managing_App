@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -11,98 +14,300 @@ import 'package:passenger_managing_app/services/time_table_service.dart';
 import 'package:passenger_managing_app/utils/screen_state_manager.dart';
 import 'package:passenger_managing_app/utils/sorting_utils.dart';
 import 'package:passenger_managing_app/widgets/app_drawer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ModernHomeScreen extends StatefulWidget {
-  const ModernHomeScreen({super.key});
+  final List<PageState> initialPages;
+  const ModernHomeScreen({super.key, required this.initialPages});
 
   @override
   _ModernHomeScreenState createState() => _ModernHomeScreenState();
 }
 
-class _ModernHomeScreenState extends State<ModernHomeScreen> {
-  final PageController _pageController = PageController();
+class _ModernHomeScreenState extends State<ModernHomeScreen>
+    with WidgetsBindingObserver {
+  late List<PageState> pages;
+  late PageController _pageController;
+  int currentPageIndex = 0;
+  // final PageController _pageController = PageController();
   final ScreenStateManager _stateManager = ScreenStateManager();
-
-  List<PageState> get pages => _stateManager.pages;
-  set pages(List<PageState> value) => _stateManager.pages = value;
-  //List<PageState> pages = [];
-  // List to store page states
-  //int currentPageIndex = 0;
-  int get currentPageIndex => _stateManager.currentPageIndex;
-  set currentPageIndex(int value) => _stateManager.currentPageIndex = value;
-  String copiedData = "";
+  //List<PageState> get pages => _stateManager.pages;
+  //set pages(List<PageState> value) => _stateManager.pages = value;
+  // //List<PageState> pages = [];
+  // // List to store page states
+  // //int currentPageIndex = 0;
+  // int get currentPageIndex => _stateManager.currentPageIndex;
+  // set currentPageIndex(int value) => _stateManager.currentPageIndex = value;
+  // String copiedData = "";
 
   final BusService _busService = BusService();
   late final DriverService _driverService;
-  // final FlightService _flightService = FlightService();
+  // // final FlightService _flightService = FlightService();
 
   List<Driver> _drivers = [];
-  // Replace _driverOptions with this
+  // // Replace _driverOptions with this
   bool _isLoadingDrivers = false;
-  Future<void> _loadDriversAndFlights() async {
+  bool _isInitialized = false;
+  // Future<void> _loadDriversAndFlights() async {
+  //   if (!mounted) return;
+
+  //   setState(() => _isLoadingDrivers = true);
+
+  //   try {
+  //     // Fetch and sort drivers
+  //     final fetchedDrivers = await _driverService.getAllDrivers();
+  //     fetchedDrivers
+  //         .sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
+
+  //     // Fetch and sort flights
+  //     // final fetchedFlights = await _flightService.getAllFlights();
+  //     // fetchedFlights.sort(
+  //     //     (a, b) => a.name.compareTo(b.name)); // Sort flights alphabetically
+
+  //     if (!mounted) return;
+
+  //     setState(() {
+  //       _drivers = fetchedDrivers;
+  //       _isLoadingDrivers = false;
+  //     });
+  //   } catch (e) {
+  //     if (!mounted) return;
+
+  //     setState(() => _isLoadingDrivers = false);
+  //   }
+  // }
+
+  final TimeTableService _timeTableService = TimeTableService();
+
+  // //final List<NightFlight> _nightFlights = [];
+
+  // Future<void> _loadNightFlights() async {
+  //   try {
+  //     final nightFlights = await _timeTableService.getNightFlights();
+  //     if (!mounted) return;
+
+  //     setState(() {
+  //       _stateManager.nightFlights = nightFlights;
+
+  //       // Only create new pages if there are no existing pages
+  //       if (pages.isEmpty) {
+  //         // Create a new page for each night flight
+  //         for (var flight in nightFlights) {
+  //           final newPage = PageState()
+  //             ..selectedDate = flight.date
+  //             ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
+  //             ..selectedTransferOptions = flight.destinations;
+
+  //           pages.add(newPage);
+
+  //           // Set up listener for passenger count
+  //           newPage.passengerController
+  //               .addListener(() => _updateOnlinePassengers(pages.length - 1));
+  //         }
+
+  //         if (pages.isEmpty) {
+  //           // Add at least one default page if no night flights found
+  //           pages.add(PageState());
+  //           pages[0]
+  //               .passengerController
+  //               .addListener(() => _updateOnlinePassengers(0));
+  //         }
+  //         _saveState();
+  //       }
+  //     });
+  //     // setState(() {
+  //     //   // _nightFlights = nightFlights;
+  //     //   _stateManager.nightFlights = nightFlights;
+  //     //   // Clear existing pages
+  //     //   pages.clear();
+  //     //   currentPageIndex = 0;
+
+  //     //   // Create a new page for each night flight
+  //     //   for (var flight in nightFlights) {
+  //     //     final newPage = PageState()
+  //     //       ..selectedDate = flight.date
+  //     //       ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
+  //     //       ..selectedTransferOptions = flight.destinations;
+
+  //     //     pages.add(newPage);
+
+  //     //     // Set up listener for passenger count
+  //     //     newPage.passengerController
+  //     //         .addListener(() => _updateOnlinePassengers(pages.length - 1));
+  //     //   }
+
+  //     //   if (pages.isEmpty) {
+  //     //     // Add at least one default page if no night flights found
+  //     //     pages.add(PageState());
+  //     //     pages[0]
+  //     //         .passengerController
+  //     //         .addListener(() => _updateOnlinePassengers(0));
+  //     //   }
+  //     //   _saveState();
+  //     // });
+  //   } catch (e) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text('Error loading flights: $e'),
+  //           backgroundColor: Colors.red,
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _driverService = DriverService(_busService);
+
+  //   if (!_stateManager.isInitialized) {
+  //     // First time initialization
+  //     _loadNightFlights();
+  //     _loadDriversAndFlights();
+  //     _stateManager.isInitialized = true;
+
+  //     // Add initial page if needed
+  //     if (pages.isEmpty) {
+  //       pages.add(PageState());
+  //       pages[0]
+  //           .passengerController
+  //           .addListener(() => _updateOnlinePassengers(0));
+  //     }
+  //   } else {
+  //     // Just restore existing state
+  //     _loadDriversAndFlights(); // Refresh drivers list only
+  //     Future.microtask(() {
+  //       _pageController.jumpToPage(currentPageIndex);
+  //     });
+  //   }
+
+  //   // Set up page controller listener
+  //   _pageController.addListener(() {
+  //     final newPage = _pageController.page?.round() ?? 0;
+  //     if (newPage != currentPageIndex) {
+  //       setState(() {
+  //         currentPageIndex = newPage;
+  //       });
+  //     }
+  //   });
+  // }
+
+//  Future<void> _setupPlatformState() async {
+//     try {
+//       // This will call native platform code to set up any required configurations
+//       await platform.invokeMethod('setupAppState');
+//     } on PlatformException catch (e) {
+//       print('Error setting up platform state: $e');
+//     }
+//   }
+  @override
+  void initState() {
+    super.initState();
+    pages = widget.initialPages;
+    _pageController = PageController();
+    WidgetsBinding.instance.addObserver(this);
+    _driverService = DriverService(_busService);
+    //_setupPlatformState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+
+          _loadInitialData();
+        });
+      }
+    });
+
+    // Future.delayed(Duration.zero, () {
+    //   if (mounted) {
+    //     setState(() {
+    //       for (var page in pages) {
+    //         page.recreateControllers();
+    //         page.passengerController.addListener(
+    //             () => _updateOnlinePassengers(pages.indexOf(page)));
+    //       }
+    //       _isInitialized = true;
+    //     });
+    //   }
+    // });
+    for (var page in pages) {
+      page.passengerController
+          .addListener(() => _updateOnlinePassengers(pages.indexOf(page)));
+    }
+    // Only load drivers when we have saved pages
+    // _loadDriversOnly();
+    //_loadInitialData();
+
+    // Set up controller listener for first page
+    if (pages.isNotEmpty) {
+      pages[0]
+          .passengerController
+          .addListener(() => _updateOnlinePassengers(0));
+    }
+  }
+
+  Future<void> _loadInitialData() async {
     if (!mounted) return;
 
     setState(() => _isLoadingDrivers = true);
 
     try {
-      // Fetch and sort drivers
-      final fetchedDrivers = await _driverService.getAllDrivers();
-      fetchedDrivers
-          .sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
-
-      // Fetch and sort flights
-      // final fetchedFlights = await _flightService.getAllFlights();
-      // fetchedFlights.sort(
-      //     (a, b) => a.name.compareTo(b.name)); // Sort flights alphabetically
-
-      if (!mounted) return;
-
-      setState(() {
-        _drivers = fetchedDrivers;
-        _isLoadingDrivers = false;
-      });
+      // Load night flights and drivers in parallel
+      await Future.wait([
+        _loadNightFlights(),
+        _loadDriversAndFlights(),
+      ]);
     } catch (e) {
-      if (!mounted) return;
-
-      setState(() => _isLoadingDrivers = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDrivers = false;
+          _isInitialized = true;
+        });
+      }
     }
   }
-
-  final TimeTableService _timeTableService = TimeTableService();
-
-  //final List<NightFlight> _nightFlights = [];
 
   Future<void> _loadNightFlights() async {
     try {
       final nightFlights = await _timeTableService.getNightFlights();
+      if (!mounted) return;
 
       setState(() {
-        // _nightFlights = nightFlights;
         _stateManager.nightFlights = nightFlights;
-        // Clear existing pages
-        pages.clear();
-        currentPageIndex = 0;
 
-        // Create a new page for each night flight
-        for (var flight in nightFlights) {
-          final newPage = PageState()
-            ..selectedDate = flight.date
-            ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
-            ..selectedTransferOptions = flight.destinations;
-
-          pages.add(newPage);
-
-          // Set up listener for passenger count
-          newPage.passengerController
-              .addListener(() => _updateOnlinePassengers(pages.length - 1));
-        }
-
+        // Only create pages if we don't have any
         if (pages.isEmpty) {
-          // Add at least one default page if no night flights found
-          pages.add(PageState());
-          pages[0]
-              .passengerController
-              .addListener(() => _updateOnlinePassengers(0));
+          // Create new pages from night flights
+          for (var flight in nightFlights) {
+            final newPage = PageState()
+              ..selectedDate = flight.date
+              ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
+              ..selectedTransferOptions = flight.destinations;
+
+            pages.add(newPage);
+            newPage.passengerController
+                .addListener(() => _updateOnlinePassengers(pages.length - 1));
+          }
+
+          if (pages.isEmpty) {
+            pages.add(PageState());
+            pages[0]
+                .passengerController
+                .addListener(() => _updateOnlinePassengers(0));
+          }
+          _saveState();
         }
       });
     } catch (e) {
@@ -117,47 +322,86 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _driverService = DriverService(_busService);
+  Future<void> _loadDriversAndFlights() async {
+    if (!mounted) return; // Add check at the beginning
 
-    if (!_stateManager.isInitialized) {
-      // First time initialization
-      _loadNightFlights();
-      _loadDriversAndFlights();
-      _stateManager.isInitialized = true;
-
-      // Add initial page if needed
-      if (pages.isEmpty) {
-        pages.add(PageState());
-        pages[0]
-            .passengerController
-            .addListener(() => _updateOnlinePassengers(0));
-      }
-    } else {
-      // Just restore existing state
-      _loadDriversAndFlights(); // Refresh drivers list only
-      Future.microtask(() {
-        _pageController.jumpToPage(currentPageIndex);
+    try {
+      setState(() {
+        _isLoadingDrivers = true; // Set loading state at start
       });
-    }
 
-    // Set up page controller listener
-    _pageController.addListener(() {
-      final newPage = _pageController.page?.round() ?? 0;
-      if (newPage != currentPageIndex) {
-        setState(() {
-          currentPageIndex = newPage;
-        });
-      }
-    });
+      final fetchedDrivers = await _driverService.getAllDrivers();
+      fetchedDrivers
+          .sort((a, b) => compareDriversByBusNumber(a.busNumber, b.busNumber));
+
+      if (!mounted) return;
+
+      setState(() {
+        _drivers = fetchedDrivers;
+        _isLoadingDrivers = false; // Reset loading state on success
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingDrivers = false; // Reset loading state on error
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading drivers: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
+
+  // @override
+  // void dispose() {
+  //   _pageController.dispose();
+  //   super.dispose();
+  // }
 
   @override
   void dispose() {
+    for (var page in pages) {
+    page.passengerController.removeListener(() => 
+      _updateOnlinePassengers(pages.indexOf(page)));
+    page.dispose();
+  }
     _pageController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Save state on any lifecycle change that might lead to app termination
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _saveState();
+    }
+  }
+
+  Future<void> _saveState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pagesData = pages.map((page) => page.toJson()).toList();
+      final encodedData = jsonEncode(pagesData);
+
+      // Save current state
+      await prefs.setString('temp_pages_data', encodedData);
+
+      // Also save a backup
+      await prefs.setString('backup_pages_data', encodedData);
+
+      // Save timestamp of last save
+      await prefs.setInt(
+          'last_save_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      rethrow;
+    }
   }
 
   void _addNewPage() {
@@ -167,7 +411,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       pages[currentPageIndex].passengerController.addListener(
             () => _updateOnlinePassengers(currentPageIndex),
           );
-
+      _saveState();
       _pageController.animateToPage(
         currentPageIndex,
         duration: const Duration(milliseconds: 150),
@@ -232,6 +476,8 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
               page.wizzPassengerCount +
               freePassengers);
       if (page.onlinePassengerCount < 0) page.onlinePassengerCount = 0;
+
+      _saveState();
     });
   }
 
@@ -1227,6 +1473,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       PageState currentPage = pages[pageIndex];
       currentPage.selectedDate = DateTime.now();
       currentPage.selectedTime = TimeOfDay.now();
+
+      currentPage.resetControllers();
+
       currentPage.passengerController.clear();
       currentPage.onTheWayController.clear();
       currentPage.freePassengersController.clear();
@@ -1958,9 +2207,26 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            ElevatedButton(
+            onPressed: () => _showRefreshConfirmation(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[50],
+              padding: const EdgeInsets.symmetric(horizontal: 16,vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.refresh, size: 20, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
             // Total Cash Amount Display
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.green[50],
                 borderRadius: BorderRadius.circular(8),
@@ -2004,6 +2270,168 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
       ),
     );
   }
+
+  void _showRefreshConfirmation(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.refresh,
+                  color: Colors.blue[700],
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'გვერდების განახლება',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'გსურთ გვერდების განახლება და ახლიდან გენერაცია?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'გაუქმება',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await _refreshPages();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.refresh, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'განახლება',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _refreshPages() async {
+  try {
+    setState(() => _isLoadingDrivers = true);
+
+    // Clear existing pages
+    for (var page in pages) {
+      page.dispose();
+    }
+    pages.clear();
+    currentPageIndex = 0;
+
+    // Load night flights and create new pages
+    final nightFlights = await _timeTableService.getNightFlights();
+    if (!mounted) return;
+
+    setState(() {
+      _stateManager.nightFlights = nightFlights;
+
+      // Create new pages from night flights
+      for (var flight in nightFlights) {
+        final newPage = PageState()
+          ..selectedDate = flight.date
+          ..selectedTime = TimeOfDay.fromDateTime(flight.departureTime)
+          ..selectedTransferOptions = flight.destinations;
+
+        pages.add(newPage);
+        newPage.passengerController
+            .addListener(() => _updateOnlinePassengers(pages.length - 1));
+      }
+
+      // Add default page if no flights
+      if (pages.isEmpty) {
+        pages.add(PageState());
+        pages[0].passengerController
+            .addListener(() => _updateOnlinePassengers(0));
+      }
+
+      _isLoadingDrivers = false;
+    });
+
+    // Save the new state
+    await _saveState();
+
+    // Show success message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('გვერდები წარმატებით განახლდა'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('შეცდომა განახლებისას: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
 
   Widget _buildChildCounterWithCheckbox({
     required IconData icon,
@@ -2079,6 +2507,13 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Material(
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       drawer: const AppDrawer(),
