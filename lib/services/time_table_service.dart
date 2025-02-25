@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:passenger_managing_app/models/night_flight.dart';
 
 class TimeTableService {
-  static const String baseUrl = 'http://janiapp.azurewebsites.net'; // Replace with your API URL
+  static const String baseUrl = 'http://janiapp.azurewebsites.net'; 
 
   Future<List<NightFlight>> getNightFlights() async {
     try {

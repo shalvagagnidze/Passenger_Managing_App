@@ -280,15 +280,34 @@ class _ModernHomeScreenState extends State<ModernHomeScreen>
   }
 
   Future<void> _loadNightFlights() async {
-    try {
-      final nightFlights = await _timeTableService.getNightFlights();
-      if (!mounted) return;
+  try {
+    final nightFlights = await _timeTableService.getNightFlights();
+    if (!mounted) return;
 
-      setState(() {
-        _stateManager.nightFlights = nightFlights;
-
-        // Only create pages if we don't have any
-        if (pages.isEmpty) {
+    setState(() {
+      _stateManager.nightFlights = nightFlights;
+      
+      // Check if we have night flights to process
+      if (nightFlights.isNotEmpty) {
+        // Check if pages should be recreated 
+        // (either we have no pages or existing pages don't match flight data)
+        bool shouldCreatePages = pages.isEmpty;
+        
+        // If we already have pages, check if they match our flight data
+        if (!shouldCreatePages && pages.length != nightFlights.length) {
+          shouldCreatePages = true;
+        }
+        
+        // Only recreate pages if needed
+        if (shouldCreatePages) {
+          // Dispose existing pages first
+          for (var page in pages) {
+            page.dispose();
+          }
+          
+          // Clear existing pages
+          pages.clear();
+          
           // Create new pages from night flights
           for (var flight in nightFlights) {
             final newPage = PageState()
@@ -300,27 +319,41 @@ class _ModernHomeScreenState extends State<ModernHomeScreen>
             newPage.passengerController
                 .addListener(() => _updateOnlinePassengers(pages.length - 1));
           }
-
+          
+          // Reset current page index
+          currentPageIndex = 0;
+          
+          // Ensure we have at least one page
           if (pages.isEmpty) {
             pages.add(PageState());
             pages[0]
                 .passengerController
                 .addListener(() => _updateOnlinePassengers(0));
           }
+          
+          // Save the updated state
           _saveState();
         }
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading flights: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } else if (pages.isEmpty) {
+        // No night flights but also no pages - create at least one default page
+        pages.add(PageState());
+        pages[0]
+            .passengerController
+            .addListener(() => _updateOnlinePassengers(0));
+        _saveState();
       }
+    });
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading flights: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+}
 
   Future<void> _loadDriversAndFlights() async {
     if (!mounted) return; // Add check at the beginning
@@ -2352,7 +2385,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen>
                         Icon(Icons.refresh, size: 20),
                         SizedBox(width: 8),
                         Text(
-                          'განახლება',
+                          'დიახ',
                           style: TextStyle(fontSize: 16),
                         ),
                       ],

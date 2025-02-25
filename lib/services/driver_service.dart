@@ -6,7 +6,7 @@ import 'package:passenger_managing_app/services/bus_service.dart';
 
 
 class DriverService {
-  static const String baseUrl = 'https://janiapp.azurewebsites.net';
+  static const String baseUrl = 'http://janiapp.azurewebsites.net';
 
   final BusService _busService;
 
