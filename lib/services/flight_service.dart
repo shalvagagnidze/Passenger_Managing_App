@@ -3,7 +3,7 @@ import 'package:passenger_managing_app/models/flight.dart';
 import 'dart:convert';
 
 class FlightService {
-  static const String baseUrl = 'http://janiapp.azurewebsites.net';
+  static const String baseUrl = 'https://janiapp.azurewebsites.net';
 
   Future<List<Flight>> getAllFlights() async {
     try {
