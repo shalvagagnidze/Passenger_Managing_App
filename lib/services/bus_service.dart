@@ -4,7 +4,7 @@ import 'package:passenger_managing_app/models/bus.dart';
 import 'package:passenger_managing_app/utils/sorting_utils.dart';
 
 class BusService {
-  static const String baseUrl = 'https://janiapp.azurewebsites.net';
+  static const String baseUrl = 'https://passengermanagingapp-production.up.railway.app';
 
   Future<void> addBus(String busNumber) async {
     try {
